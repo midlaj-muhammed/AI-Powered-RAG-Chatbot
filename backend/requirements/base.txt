@@ -15,7 +15,7 @@ django-q2>=1.6,<2.0
 
 # LangChain & AI
 langchain>=0.3,<1.0
-langchain-google-genai>=2.0,<3.0
+langchain-google-genai>=2.0,<5.0
 langchain-community>=0.3,<1.0
 langchain-chroma>=0.2,<1.0
 langchain-groq>=0.1,<1.0
