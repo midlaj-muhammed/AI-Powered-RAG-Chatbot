@@ -4,12 +4,12 @@ import sys
 from datetime import timedelta
 from pathlib import Path
 
+import dj_database_url
+import structlog
+
 # Detect if we are running in a test environment
 TESTING = "test" in sys.argv or "pytest" in sys.modules
 print(f"DEBUG_INFO: TESTING={TESTING}, sys.argv={sys.argv}")
-
-import dj_database_url
-import structlog
 
 # Build paths
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
