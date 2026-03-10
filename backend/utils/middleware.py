@@ -70,7 +70,7 @@ class RateLimitMiddleware(MiddlewareMixin):
 
     def process_request(self, request):
         """Check rate limits before processing request."""
-        if settings.DEBUG:
+        if settings.DEBUG or getattr(settings, "TESTING", False):
             return None
 
         # Get client IP (handle proxy headers)

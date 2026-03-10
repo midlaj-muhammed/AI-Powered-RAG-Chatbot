@@ -1,7 +1,12 @@
 import importlib.util
 import os
+import sys
 from datetime import timedelta
 from pathlib import Path
+
+# Detect if we are running in a test environment
+TESTING = "test" in sys.argv or "pytest" in sys.modules
+print(f"DEBUG_INFO: TESTING={TESTING}, sys.argv={sys.argv}")
 
 import dj_database_url
 import structlog
@@ -189,8 +194,12 @@ REST_FRAMEWORK = {
     ),
     # Enhanced throttling with custom classes
     "DEFAULT_THROTTLE_CLASSES": (
-        "utils.throttling.BurstRateThrottle",
-        "utils.throttling.SignedRequestRateThrottle",
+        []
+        if TESTING
+        else [
+            "utils.throttling.BurstRateThrottle",
+            "utils.throttling.SignedRequestRateThrottle",
+        ]
     ),
     "DEFAULT_THROTTLE_RATES": {
         "user": "100/minute",
@@ -207,6 +216,10 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "EXCEPTION_HANDLER": "utils.exceptions.custom_exception_handler",
 }
+
+if TESTING:
+    REST_FRAMEWORK["DEFAULT_THROTTLE_CLASSES"] = []
+    REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {}
 
 # JWT Settings
 

@@ -55,8 +55,9 @@ class BurstRateThrottle(BaseThrottle):
 
     def allow_request(self, request: Request, view) -> bool:
         """Check if request should be allowed based on burst rate."""
-        # Skip throttling in debug mode
-        if getattr(request, "DEBUG", False):
+        from django.conf import settings
+
+        if settings.DEBUG:
             return True
 
         # Get user identifier
@@ -194,8 +195,9 @@ class SignedRequestRateThrottle(BaseThrottle):
 
     def allow_request(self, request: Request, view) -> bool:
         """Check if request is allowed based on signature and rate."""
-        # Skip in debug mode
-        if getattr(request, "DEBUG", False):
+        from django.conf import settings
+
+        if settings.DEBUG:
             return True
 
         # Check if request is signed

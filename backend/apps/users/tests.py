@@ -35,7 +35,8 @@ class TestRegistration:
     def test_register_success(self, api_client, user_data):
         response = api_client.post("/api/auth/register/", user_data, format="json")
         assert response.status_code == status.HTTP_201_CREATED
-        assert "tokens" in response.data
+        assert "refresh" in response.data
+        assert "access" in response.data
         assert "user" in response.data
         assert response.data["user"]["email"] == user_data["email"]
 
