@@ -98,8 +98,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check secrets
+        id: check_secrets
+        env:
+          SSH_HOST: ${{ secrets.STAGING_HOST }}
+        run: |
+          if [ -n "$SSH_HOST" ]; then
+            echo "has_secret=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_secret=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Deploy to staging server
-        if: ${{ secrets.STAGING_HOST != '' }}
+        if: steps.check_secrets.outputs.has_secret == 'true'
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.STAGING_HOST }}
@@ -123,7 +134,7 @@ jobs:
             docker compose -f docker-compose.prod.yml exec -T backend python manage.py collectstatic --noinput
 
       - name: Health check
-        if: ${{ secrets.STAGING_HOST != '' }}
+        if: steps.check_secrets.outputs.has_secret == 'true'
         run: |
           for i in {1..12}; do
             status=$(curl -s -o /dev/null -w "%{http_code}" "${{ vars.STAGING_URL }}/api/health/" || true)
@@ -151,8 +162,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check secrets
+        id: check_secrets
+        env:
+          SSH_HOST: ${{ secrets.PRODUCTION_HOST }}
+        run: |
+          if [ -n "$SSH_HOST" ]; then
+            echo "has_secret=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_secret=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Deploy to production server
-        if: ${{ secrets.PRODUCTION_HOST != '' }}
+        if: steps.check_secrets.outputs.has_secret == 'true'
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.PRODUCTION_HOST }}
@@ -178,7 +200,7 @@ jobs:
             docker image prune -f
 
       - name: Health check
-        if: ${{ secrets.PRODUCTION_HOST != '' }}
+        if: steps.check_secrets.outputs.has_secret == 'true'
         run: |
           for i in {1..12}; do
             status=$(curl -s -o /dev/null -w "%{http_code}" "${{ vars.PRODUCTION_URL }}/api/health/" || true)
