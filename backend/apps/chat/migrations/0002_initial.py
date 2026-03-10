@@ -6,41 +6,58 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
-        ('chat', '0001_initial'),
+        ("chat", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='chatsession',
-            name='user',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='chat_sessions', to=settings.AUTH_USER_MODEL),
+            model_name="chatsession",
+            name="user",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="chat_sessions",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AddField(
-            model_name='message',
-            name='session',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='messages', to='chat.chatsession'),
+            model_name="message",
+            name="session",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="messages",
+                to="chat.chatsession",
+            ),
         ),
         migrations.AddField(
-            model_name='messagefeedback',
-            name='message',
-            field=models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='feedback', to='chat.message'),
+            model_name="messagefeedback",
+            name="message",
+            field=models.OneToOneField(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="feedback",
+                to="chat.message",
+            ),
         ),
         migrations.AddField(
-            model_name='messagefeedback',
-            name='user',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL),
+            model_name="messagefeedback",
+            name="user",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL
+            ),
         ),
         migrations.AddIndex(
-            model_name='chatsession',
-            index=models.Index(fields=['user', '-updated_at'], name='chat_sessio_user_id_b84598_idx'),
+            model_name="chatsession",
+            index=models.Index(
+                fields=["user", "-updated_at"], name="chat_sessio_user_id_b84598_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='message',
-            index=models.Index(fields=['session', 'created_at'], name='messages_session_1b3070_idx'),
+            model_name="message",
+            index=models.Index(
+                fields=["session", "created_at"], name="messages_session_1b3070_idx"
+            ),
         ),
     ]

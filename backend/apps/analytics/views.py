@@ -1,10 +1,10 @@
 """Analytics views — admin dashboard data endpoints."""
 
-import structlog
 from datetime import timedelta
 
+import structlog
 from django.core.cache import cache
-from django.db.models import Avg, Count, F, Q, Sum
+from django.db.models import Avg, Count, Q, Sum
 from django.db.models.functions import TruncDate
 from django.utils import timezone
 from rest_framework import permissions
@@ -13,7 +13,7 @@ from rest_framework.views import APIView
 
 from apps.chat.models import ChatSession, Message, MessageFeedback
 from apps.documents.models import Document, DocumentChunk, DocumentStatus
-from apps.users.permissions import IsAdmin, IsEditorOrAdmin
+from apps.users.permissions import IsEditorOrAdmin
 
 logger = structlog.get_logger(__name__)
 
@@ -39,12 +39,15 @@ class DashboardOverviewView(APIView):
         total_sessions = ChatSession.objects.filter(is_archived=False).count()
         total_messages = Message.objects.count()
         avg_confidence = (
-            Message.objects.filter(role="assistant", confidence_score__isnull=False)
-            .aggregate(avg=Avg("confidence_score"))["avg"]
+            Message.objects.filter(
+                role="assistant", confidence_score__isnull=False
+            ).aggregate(avg=Avg("confidence_score"))["avg"]
             or 0
         )
         total_chunks = DocumentChunk.objects.count()
-        total_tokens = DocumentChunk.objects.aggregate(total=Sum("token_count"))["total"] or 0
+        total_tokens = (
+            DocumentChunk.objects.aggregate(total=Sum("token_count"))["total"] or 0
+        )
 
         feedback_stats = MessageFeedback.objects.aggregate(
             total=Count("id"),
@@ -54,9 +57,12 @@ class DashboardOverviewView(APIView):
 
         # Active users (last 7 days)
         week_ago = timezone.now() - timedelta(days=7)
-        active_users = ChatSession.objects.filter(
-            updated_at__gte=week_ago
-        ).values("user").distinct().count()
+        active_users = (
+            ChatSession.objects.filter(updated_at__gte=week_ago)
+            .values("user")
+            .distinct()
+            .count()
+        )
 
         data = {
             "documents": {
@@ -173,16 +179,20 @@ class QueryAnalyticsView(APIView):
             count = ai_messages.filter(
                 confidence_score__gte=low, confidence_score__lt=high
             ).count()
-            confidence_dist.append({
-                "range": f"{int(low*100)}-{int(high*100)}%",
-                "count": count,
-            })
+            confidence_dist.append(
+                {
+                    "range": f"{int(low * 100)}-{int(high * 100)}%",
+                    "count": count,
+                }
+            )
 
         # Recent slow queries (latency > 5s)
         slow_queries = (
             ai_messages.filter(latency_ms__gt=5000)
             .order_by("-created_at")
-            .values("id", "latency_ms", "tokens_used", "confidence_score", "created_at")[:10]
+            .values(
+                "id", "latency_ms", "tokens_used", "confidence_score", "created_at"
+            )[:10]
         )
 
         data = {
@@ -211,9 +221,13 @@ class TopDocumentsView(APIView):
             return Response(cached)
 
         # Count source references from message sources JSON
-        ai_messages = Message.objects.filter(
-            role="assistant",
-        ).exclude(sources=[]).values_list("sources", flat=True)[:200]
+        ai_messages = (
+            Message.objects.filter(
+                role="assistant",
+            )
+            .exclude(sources=[])
+            .values_list("sources", flat=True)[:200]
+        )
 
         doc_counts: dict[str, int] = {}
         for sources in ai_messages:

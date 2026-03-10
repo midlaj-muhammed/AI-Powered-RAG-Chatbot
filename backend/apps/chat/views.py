@@ -1,15 +1,22 @@
 import csv
 import io
 import json
+from typing import cast
 
 import structlog
 from django.db.models import Count, Q
 from django.http import HttpResponse, StreamingHttpResponse
-from rest_framework import generics, permissions, status
+from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.chat.models import ChatSession, Message, MessageFeedback, MessageRole, SavedSearch
+from apps.chat.models import (
+    ChatSession,
+    Message,
+    MessageFeedback,
+    MessageRole,
+    SavedSearch,
+)
 from apps.chat.serializers import (
     ChatSessionDetailSerializer,
     ChatSessionListSerializer,
@@ -19,6 +26,7 @@ from apps.chat.serializers import (
     SendMessageSerializer,
 )
 from apps.rag.pipeline import stream_chat_response
+from apps.users.models import User
 
 logger = structlog.get_logger(__name__)
 
@@ -29,8 +37,9 @@ class ChatSessionListCreateView(generics.ListCreateAPIView):
     serializer_class = ChatSessionListSerializer
 
     def get_queryset(self):
+        user = cast(User, self.request.user)
         return (
-            ChatSession.objects.filter(user=self.request.user, is_archived=False)
+            ChatSession.objects.filter(user=user, is_archived=False)
             .annotate(message_count=Count("messages"))
             .prefetch_related("messages")
             .order_by("-updated_at")
@@ -46,7 +55,8 @@ class ChatSessionDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ChatSessionDetailSerializer
 
     def get_queryset(self):
-        return ChatSession.objects.filter(user=self.request.user)
+        user = cast(User, self.request.user)
+        return ChatSession.objects.filter(user=user)
 
     def perform_destroy(self, instance):
         # Soft delete — archive instead of deleting
@@ -62,9 +72,7 @@ class SendMessageView(APIView):
         serializer.is_valid(raise_exception=True)
 
         try:
-            session = ChatSession.objects.get(
-                id=session_id, user=request.user
-            )
+            session = ChatSession.objects.get(id=session_id, user=request.user)
         except ChatSession.DoesNotExist:
             return Response(
                 {"detail": "Chat session not found."},
@@ -139,15 +147,17 @@ class ToggleFavoriteView(APIView):
 # Phase 3: Query History
 # ---------------------------------------------------------------------------
 
+
 class QueryHistoryView(generics.ListAPIView):
     """List user's past queries with search, filter, and ordering."""
 
     serializer_class = QueryHistorySerializer
 
     def get_queryset(self):
+        user = cast(User, self.request.user)
         qs = Message.objects.filter(
             role=MessageRole.USER,
-            session__user=self.request.user,
+            session__user=user,
             session__is_archived=False,
         ).select_related("session")
 
@@ -167,19 +177,19 @@ class QueryHistoryView(generics.ListAPIView):
         # Filter by session
         session_id = self.request.query_params.get("session")
         if session_id:
-            qs = qs.filter(session_id=session_id)
+            qs = qs.filter(session__id=session_id)
 
         # Favorites only
         if self.request.query_params.get("favorites") == "true":
             # Get user messages whose AI responses are favourited
+            user = cast(User, self.request.user)
             fav_msg_ids = Message.objects.filter(
                 role=MessageRole.ASSISTANT,
-                session__user=self.request.user,
+                session__user=user,
                 is_favorite=True,
             ).values_list("id", flat=True)
             qs = qs.filter(
-                Q(is_favorite=True)
-                | Q(session__messages__id__in=fav_msg_ids)
+                Q(is_favorite=True) | Q(session__messages__id__in=fav_msg_ids)
             ).distinct()
 
         return qs.order_by("-created_at")
@@ -189,16 +199,19 @@ class QueryHistoryView(generics.ListAPIView):
 # Phase 3: Saved Searches
 # ---------------------------------------------------------------------------
 
+
 class SavedSearchListCreateView(generics.ListCreateAPIView):
     """List and create saved searches."""
 
     serializer_class = SavedSearchSerializer
 
     def get_queryset(self):
-        return SavedSearch.objects.filter(user=self.request.user)
+        user = cast(User, self.request.user)
+        return SavedSearch.objects.filter(user=user)
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        user = cast(User, self.request.user)
+        serializer.save(user=user)
 
 
 class SavedSearchDetailView(generics.RetrieveDestroyAPIView):
@@ -207,12 +220,14 @@ class SavedSearchDetailView(generics.RetrieveDestroyAPIView):
     serializer_class = SavedSearchSerializer
 
     def get_queryset(self):
-        return SavedSearch.objects.filter(user=self.request.user)
+        user = cast(User, self.request.user)
+        return SavedSearch.objects.filter(user=user)
 
 
 # ---------------------------------------------------------------------------
 # Phase 3: Export
 # ---------------------------------------------------------------------------
+
 
 class ExportChatView(APIView):
     """Export a chat session as JSON or Markdown."""
@@ -231,19 +246,28 @@ class ExportChatView(APIView):
         messages = Message.objects.filter(session=session).order_by("created_at")
 
         if fmt == "markdown":
-            lines = [f"# {session.title}\n", f"*Exported on {session.created_at.isoformat()}*\n\n---\n"]
+            lines = [
+                f"# {session.title}\n",
+                f"*Exported on {session.created_at.isoformat()}*\n\n---\n",
+            ]
             for msg in messages:
                 role = "**You**" if msg.role == "user" else "**Assistant**"
                 lines.append(f"\n{role}  \n{msg.content}\n")
                 if msg.sources:
                     lines.append("\n<details><summary>Sources</summary>\n")
                     for src in msg.sources:
-                        lines.append(f"- {src.get('document_name', '?')} (score {src.get('score', '?')})\n")
+                        lines.append(
+                            f"- {src.get('document_name', '?')} (score {src.get('score', '?')})\n"
+                        )
                     lines.append("</details>\n")
 
             content = "".join(lines)
-            response = HttpResponse(content, content_type="text/markdown; charset=utf-8")
-            response["Content-Disposition"] = f'attachment; filename="{session.title}.md"'
+            response = HttpResponse(
+                content, content_type="text/markdown; charset=utf-8"
+            )
+            response["Content-Disposition"] = (
+                f'attachment; filename="{session.title}.md"'
+            )
             return response
 
         # Default: JSON
@@ -282,23 +306,33 @@ class ExportDocumentsView(APIView):
 
         buf = io.StringIO()
         writer = csv.writer(buf)
-        writer.writerow([
-            "ID", "Filename", "Status", "Collection",
-            "MIME Type", "File Size (bytes)", "Uploaded By",
-            "Created At", "Indexed At",
-        ])
+        writer.writerow(
+            [
+                "ID",
+                "Filename",
+                "Status",
+                "Collection",
+                "MIME Type",
+                "File Size (bytes)",
+                "Uploaded By",
+                "Created At",
+                "Indexed At",
+            ]
+        )
         for doc in qs.iterator():
-            writer.writerow([
-                str(doc.id),
-                doc.original_name,
-                doc.status,
-                doc.collection.name if doc.collection else "",
-                doc.mime_type,
-                doc.file_size,
-                doc.uploaded_by.email if doc.uploaded_by else "",
-                doc.created_at.isoformat(),
-                doc.indexed_at.isoformat() if doc.indexed_at else "",
-            ])
+            writer.writerow(
+                [
+                    str(doc.id),
+                    doc.original_name,
+                    doc.status,
+                    doc.collection.name if doc.collection else "",
+                    doc.mime_type,
+                    doc.file_size,
+                    doc.uploaded_by.email if doc.uploaded_by else "",
+                    doc.created_at.isoformat(),
+                    doc.indexed_at.isoformat() if doc.indexed_at else "",
+                ]
+            )
 
         response = HttpResponse(buf.getvalue(), content_type="text/csv")
         response["Content-Disposition"] = 'attachment; filename="documents_export.csv"'

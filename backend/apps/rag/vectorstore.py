@@ -1,4 +1,5 @@
 import os
+from typing import Any
 
 import structlog
 from django.conf import settings
@@ -41,7 +42,9 @@ def add_documents(texts: list[str], metadatas: list[dict], ids: list[str]) -> li
     validated_metadatas = []
     validated_ids = []
 
-    for i, (text, metadata, doc_id) in enumerate(zip(texts, metadatas, ids)):
+    for i, (text, metadata, doc_id) in enumerate(
+        zip(texts, metadatas, ids, strict=False)
+    ):
         if text and isinstance(text, str) and text.strip():
             validated_texts.append(text.strip())
             validated_metadatas.append(metadata)
@@ -54,24 +57,25 @@ def add_documents(texts: list[str], metadatas: list[dict], ids: list[str]) -> li
         raise ValueError("No valid text chunks to add after filtering")
 
     vectorstore = get_vectorstore()
-    result_ids = vectorstore.add_texts(texts=validated_texts, metadatas=validated_metadatas, ids=validated_ids)
+    result_ids = vectorstore.add_texts(
+        texts=validated_texts, metadatas=validated_metadatas, ids=validated_ids
+    )
     logger.info("documents_added", count=len(validated_texts))
     return result_ids
 
 
 def similarity_search(
     query: str,
-    k: int = None,
-    filter_dict: dict = None,
-) -> list:
+    k: int | None = None,
+    filter_dict: dict[str, Any] | None = None,
+) -> list[Any]:
     """Search for similar documents in the vector store."""
-    if k is None:
-        k = settings.RAG_CONFIG["top_k"]
+    search_k = k if k is not None else int(settings.RAG_CONFIG["top_k"])
 
     vectorstore = get_vectorstore()
     results = vectorstore.similarity_search_with_relevance_scores(
         query=query,
-        k=k,
+        k=search_k,
         filter=filter_dict,
     )
 
@@ -95,4 +99,6 @@ def delete_by_document_id(document_id: str) -> None:
     results = vectorstore.get(where={"document_id": document_id})
     if results and results["ids"]:
         vectorstore.delete(ids=results["ids"])
-        logger.info("documents_deleted", document_id=document_id, count=len(results["ids"]))
+        logger.info(
+            "documents_deleted", document_id=document_id, count=len(results["ids"])
+        )

@@ -7,7 +7,9 @@ from apps.chat.models import ChatSession, Message, MessageFeedback, SavedSearch
 
 def sanitize_text(text: str) -> str:
     """Basic XSS prevention — strip script tags and dangerous patterns."""
-    text = re.sub(r"<script[^>]*>.*?</script>", "", text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(
+        r"<script[^>]*>.*?</script>", "", text, flags=re.DOTALL | re.IGNORECASE
+    )
     text = re.sub(r"on\w+\s*=\s*[\"'][^\"']*[\"']", "", text, flags=re.IGNORECASE)
     return text.strip()
 
@@ -76,7 +78,11 @@ class ChatSessionListSerializer(serializers.ModelSerializer):
     def get_last_message(self, obj):
         last = obj.messages.last()
         if last:
-            return {"role": last.role, "content": last.content[:100], "created_at": last.created_at}
+            return {
+                "role": last.role,
+                "content": last.content[:100],
+                "created_at": last.created_at,
+            }
         return None
 
 
@@ -122,18 +128,22 @@ class SendMessageSerializer(serializers.Serializer):
 
         # Check if empty after stripping
         if not value:
-            raise serializers.ValidationError("Message cannot be empty or contain only whitespace.")
+            raise serializers.ValidationError(
+                "Message cannot be empty or contain only whitespace."
+            )
 
         return sanitize_text(value)
 
     def validate_collection(self, value):
         """Validate collection identifier."""
-        if value and isinstance(value, str):
-            # Allow alphanumeric, hyphens, and underscores
-            if not re.match(r"^[a-zA-Z0-9_-]+$", value):
-                raise serializers.ValidationError(
-                    "Collection name can only contain letters, numbers, hyphens, and underscores."
-                )
+        if (
+            value
+            and isinstance(value, str)
+            and not re.match(r"^[a-zA-Z0-9_-]+$", value)
+        ):
+            raise serializers.ValidationError(
+                "Collection name can only contain letters, numbers, hyphens, and underscores."
+            )
         return value
 
 

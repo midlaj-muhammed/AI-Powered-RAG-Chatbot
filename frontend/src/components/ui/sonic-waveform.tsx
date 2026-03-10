@@ -3,10 +3,6 @@ import { motion, type Variants } from 'framer-motion';
 import { ArrowRight, BarChart2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-// A utility function for class names
-export const cn = (...classes: (string | undefined | false | null)[]) =>
-    classes.filter(Boolean).join(' ');
-
 // Sonic Waveform Canvas Component
 const SonicWaveformCanvas = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);

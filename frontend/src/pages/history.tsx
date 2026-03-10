@@ -18,12 +18,12 @@ import {
   CalendarDays,
 } from 'lucide-react'
 import { chatApi } from '@/api/chat'
-import { documentsApi } from '@/api/documents'
+
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Spinner } from '@/components/ui/spinner'
-import type { QueryHistoryItem, SavedSearch } from '@/api/types'
+import type { QueryHistoryItem } from '@/api/types'
 
 export function HistoryPage() {
   const navigate = useNavigate()
@@ -61,11 +61,6 @@ export function HistoryPage() {
     enabled: activeTab === 'saved',
   })
 
-  // Collections for saved searches
-  const { data: collections } = useQuery({
-    queryKey: ['collections'],
-    queryFn: () => documentsApi.getCollections(),
-  })
 
   // Mutations
   const createSavedSearch = useMutation({
@@ -99,7 +94,8 @@ export function HistoryPage() {
     setActiveTab('saved')
   }
 
-  const handleRunSaved = (saved: SavedSearch) => {
+  const handleRunSaved = () => {
+    // Navigate to chat and potentially load this search
     navigate('/chat')
   }
 
@@ -146,22 +142,20 @@ export function HistoryPage() {
         <div className="mt-4 flex gap-1 rounded-lg bg-muted p-1">
           <button
             onClick={() => setActiveTab('history')}
-            className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-              activeTab === 'history'
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
+            className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${activeTab === 'history'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
+              }`}
           >
             <Clock className="mr-1.5 inline h-4 w-4" />
             Query History
           </button>
           <button
             onClick={() => setActiveTab('saved')}
-            className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-              activeTab === 'saved'
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
+            className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${activeTab === 'saved'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
+              }`}
           >
             <Bookmark className="mr-1.5 inline h-4 w-4" />
             Saved Searches
@@ -299,7 +293,7 @@ export function HistoryPage() {
                                     variant={
                                       item.ai_response.confidence_score >= 0.7
                                         ? 'default'
-                                        : 'secondary'
+                                        : 'outline'
                                     }
                                     className="text-xs"
                                   >
@@ -497,7 +491,7 @@ export function HistoryPage() {
                         variant="outline"
                         size="sm"
                         className="h-7 text-xs"
-                        onClick={() => handleRunSaved(saved)}
+                        onClick={() => handleRunSaved()}
                       >
                         <MessageSquare className="mr-1 h-3 w-3" />
                         Run

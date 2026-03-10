@@ -1,4 +1,6 @@
+import importlib.util
 import os
+from datetime import timedelta
 from pathlib import Path
 
 import dj_database_url
@@ -8,9 +10,7 @@ import structlog
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # SECURITY
-SECRET_KEY = os.environ.get(
-    "SECRET_KEY", "django-insecure-change-me-in-production"
-)
+SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-change-me-in-production")
 DEBUG = os.environ.get("DEBUG", "True").lower() in ("true", "1", "yes")
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
@@ -36,7 +36,9 @@ CSRF_COOKIE_SAMESITE = "Lax"
 # CSRF Hardening
 CSRF_FAILURE_VIEW = "utils.csrf_views.csrf_failure_view"
 # Use CORS origins for CSRF trusted origins (they have schemes)
-CSRF_TRUSTED_ORIGINS = os.environ.get("CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
+CSRF_TRUSTED_ORIGINS = os.environ.get(
+    "CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
+).split(",")
 CSRF_COOKIE_NAME = "csrftoken"
 CSRF_HEADER_NAME = "HTTP_X_CSRFTOKEN"
 
@@ -99,6 +101,13 @@ MIDDLEWARE = [
     "utils.middleware.SecurityHeadersMiddleware",  # Add security headers
 ]
 
+if DEBUG and importlib.util.find_spec("debug_toolbar"):
+    INSTALLED_APPS += ["debug_toolbar"]
+    MIDDLEWARE.insert(
+        MIDDLEWARE.index("django.middleware.common.CommonMiddleware") + 1,
+        "debug_toolbar.middleware.DebugToolbarMiddleware",
+    )
+
 ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [
@@ -132,8 +141,13 @@ AUTH_USER_MODEL = "users.User"
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 8}},
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": 8},
+    },
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
     {"NAME": "apps.users.validators.CustomPasswordValidator"},
@@ -165,9 +179,7 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
-    "DEFAULT_PERMISSION_CLASSES": (
-        "rest_framework.permissions.IsAuthenticated",
-    ),
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
     "DEFAULT_FILTER_BACKENDS": (
@@ -183,21 +195,20 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "user": "100/minute",
         "anon": "30/minute",
-        "auth": "10/minute",           # Authentication endpoints
-        "chat": "30/minute",           # Chat endpoints
-        "upload": "5/minute",          # File uploads
-        "download": "30/minute",       # File downloads
-        "admin": "200/minute",         # Admin operations
-        "export": "5/hour",            # Data exports
-        "sensitive": "20/minute",      # Sensitive operations
-        "burst": "5/10s",             # Burst rate
+        "auth": "10/minute",  # Authentication endpoints
+        "chat": "30/minute",  # Chat endpoints
+        "upload": "5/minute",  # File uploads
+        "download": "30/minute",  # File downloads
+        "admin": "200/minute",  # Admin operations
+        "export": "5/hour",  # Data exports
+        "sensitive": "20/minute",  # Sensitive operations
+        "burst": "5/10s",  # Burst rate
     },
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "EXCEPTION_HANDLER": "utils.exceptions.custom_exception_handler",
 }
 
 # JWT Settings
-from datetime import timedelta
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
@@ -231,6 +242,7 @@ Q_CLUSTER = {
     "workers": 2,
     "recycle": 500,
     "timeout": 300,
+    "retry": 360,
     "compress": True,
     "save_limit": 250,
     "queue_limit": 500,

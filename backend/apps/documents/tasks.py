@@ -5,9 +5,9 @@ from django.conf import settings
 from django.utils import timezone
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
+from apps.documents.metadata import extract_metadata
 from apps.documents.models import Document, DocumentChunk, DocumentStatus
 from apps.documents.parsers.registry import parse_document
-from apps.documents.metadata import extract_metadata
 from apps.rag.vectorstore import add_documents, delete_by_document_id
 
 logger = structlog.get_logger(__name__)
@@ -94,14 +94,18 @@ def process_document(document_id: str) -> None:
 
             chunk_id = f"{document_id}_chunk_{valid_chunk_index}"
             texts.append(chunk_text.strip())
-            metadatas.append({
-                "document_id": document_id,
-                "document_name": document.original_name,
-                "filename": document.original_name,
-                "chunk_index": valid_chunk_index,
-                "collection_id": str(document.collection_id) if document.collection_id else "",
-                "mime_type": document.mime_type,
-            })
+            metadatas.append(
+                {
+                    "document_id": document_id,
+                    "document_name": document.original_name,
+                    "filename": document.original_name,
+                    "chunk_index": valid_chunk_index,
+                    "collection_id": str(document.collection_id)
+                    if document.collection_id
+                    else "",
+                    "mime_type": document.mime_type,
+                }
+            )
             ids.append(chunk_id)
             valid_chunk_index += 1
 
@@ -121,7 +125,7 @@ def process_document(document_id: str) -> None:
                 token_count=len(chunk_text.split()),
                 embedding_id=chunk_id,
             )
-            for chunk_text, chunk_id in zip(texts, ids)
+            for chunk_text, chunk_id in zip(texts, ids, strict=False)
         ]
         DocumentChunk.objects.bulk_create(chunk_records)
 

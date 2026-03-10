@@ -7,7 +7,7 @@ import { documentsApi } from '@/api/documents'
 import { ChatSidebar } from '@/components/chat/chat-sidebar'
 import { ChatInput } from '@/components/chat/chat-input'
 import { MessageBubble } from '@/components/chat/message-bubble'
-import { toastError, toastWarning } from '@/components/ui/toast'
+import { toastError, toastWarning } from '@/components/ui/toast-lib'
 import type { Message } from '@/api/types'
 
 export function ChatPage() {
@@ -96,9 +96,7 @@ export function ChatPage() {
       abortRef.current = new AbortController()
 
       try {
-        let assistantMessageId = ''
         let fullContent = ''
-        let hadError = false
 
         for await (const event of chatApi.sendMessage(sessionId, content, selectedCollection)) {
           if (abortRef.current?.signal.aborted) break
@@ -112,7 +110,6 @@ export function ChatPage() {
               fullContent += event.content
               break
             case 'done': {
-              assistantMessageId = event.message_id
               // Add the final assistant message
               const assistantMessage: Message = {
                 id: event.message_id,
@@ -143,7 +140,6 @@ export function ChatPage() {
               break
             }
             case 'error': {
-              hadError = true
               const errorMsg = event.detail || 'An unknown error occurred'
               toastError(errorMsg)
 
@@ -278,11 +274,10 @@ export function ChatPage() {
               <div className="flex items-center gap-1.5 flex-wrap">
                 <button
                   onClick={() => setSelectedCollection(undefined)}
-                  className={`rounded-full px-2.5 py-0.5 text-[11px] transition-colors ${
-                    !selectedCollection
-                      ? 'bg-primary/15 text-primary font-medium'
-                      : 'text-muted-foreground hover:bg-accent'
-                  }`}
+                  className={`rounded-full px-2.5 py-0.5 text-[11px] transition-colors ${!selectedCollection
+                    ? 'bg-primary/15 text-primary font-medium'
+                    : 'text-muted-foreground hover:bg-accent'
+                    }`}
                 >
                   All docs
                 </button>
@@ -294,11 +289,10 @@ export function ChatPage() {
                         selectedCollection === col.id ? undefined : col.id
                       )
                     }
-                    className={`rounded-full px-2.5 py-0.5 text-[11px] transition-colors flex items-center gap-1 ${
-                      selectedCollection === col.id
-                        ? 'bg-primary/15 text-primary font-medium'
-                        : 'text-muted-foreground hover:bg-accent'
-                    }`}
+                    className={`rounded-full px-2.5 py-0.5 text-[11px] transition-colors flex items-center gap-1 ${selectedCollection === col.id
+                      ? 'bg-primary/15 text-primary font-medium'
+                      : 'text-muted-foreground hover:bg-accent'
+                      }`}
                   >
                     <div
                       className="h-1.5 w-1.5 rounded-full"

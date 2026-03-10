@@ -23,7 +23,7 @@ import type { AdminUser } from '@/api/types'
 const roleConfig = {
   admin: { label: 'Admin', icon: ShieldAlert, variant: 'destructive' as const, color: 'text-red-400' },
   editor: { label: 'Editor', icon: ShieldCheck, variant: 'default' as const, color: 'text-blue-400' },
-  viewer: { label: 'Viewer', icon: Shield, variant: 'secondary' as const, color: 'text-gray-400' },
+  viewer: { label: 'Viewer', icon: Shield, variant: 'outline' as const, color: 'text-gray-400' },
 }
 
 export function AdminUsersPage() {

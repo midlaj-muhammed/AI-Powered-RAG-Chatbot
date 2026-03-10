@@ -1,7 +1,7 @@
 import pytest
 from django.contrib.auth import get_user_model
-from rest_framework.test import APIClient
 from rest_framework import status
+from rest_framework.test import APIClient
 
 User = get_user_model()
 
@@ -26,6 +26,7 @@ def user_data():
 def create_user():
     def _create_user(email="user@example.com", password="TestPass123!", **kwargs):
         return User.objects.create_user(email=email, password=password, **kwargs)
+
     return _create_user
 
 

@@ -15,7 +15,9 @@ class HealthCheckView(APIView):
     permission_classes = (permissions.AllowAny,)
 
     def get(self, request):
-        health = {
+        from typing import Any
+
+        health: dict[str, Any] = {
             "status": "healthy",
             "services": {},
         }
@@ -36,7 +38,10 @@ class HealthCheckView(APIView):
             if result == "ok":
                 health["services"]["redis"] = {"status": "up"}
             else:
-                health["services"]["redis"] = {"status": "down", "error": "Cache read failed"}
+                health["services"]["redis"] = {
+                    "status": "down",
+                    "error": "Cache read failed",
+                }
                 health["status"] = "unhealthy"
         except Exception as e:
             health["services"]["redis"] = {"status": "down", "error": str(e)}
@@ -45,6 +50,7 @@ class HealthCheckView(APIView):
         # Check Chroma
         try:
             from apps.rag.vectorstore import get_vectorstore
+
             vs = get_vectorstore()
             count = vs._collection.count()
             health["services"]["chroma"] = {"status": "up", "documents": count}

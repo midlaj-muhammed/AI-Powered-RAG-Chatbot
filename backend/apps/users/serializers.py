@@ -11,7 +11,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
     def validate(self, attrs):
         data = super().validate(attrs)
-        data["user"] = UserSerializer(self.user).data
+        data["user"] = UserSerializer(self.user).data  # type: ignore
         return data
 
 
@@ -64,7 +64,14 @@ class UserSerializer(serializers.ModelSerializer):
             "last_login",
             "created_at",
         )
-        read_only_fields = ("id", "email", "role", "is_active", "last_login", "created_at")
+        read_only_fields = (
+            "id",
+            "email",
+            "role",
+            "is_active",
+            "last_login",
+            "created_at",
+        )
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):

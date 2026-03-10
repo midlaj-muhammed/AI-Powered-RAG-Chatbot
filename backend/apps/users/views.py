@@ -4,8 +4,9 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework_simplejwt.views import TokenObtainPairView
 
+from apps.users.permissions import IsAdmin
 from apps.users.serializers import (
     AdminUserSerializer,
     CustomTokenObtainPairSerializer,
@@ -14,7 +15,6 @@ from apps.users.serializers import (
     UserSerializer,
     UserUpdateSerializer,
 )
-from apps.users.permissions import IsAdmin
 
 User = get_user_model()
 
@@ -117,10 +117,18 @@ class AdminUserListView(generics.ListAPIView):
     permission_classes = (permissions.IsAuthenticated, IsAdmin)
 
     def get_queryset(self):
-        queryset = User.objects.all().annotate(
-            document_count=Count("documents", filter=Q(documents__is_deleted=False)),
-            session_count=Count("chat_sessions", filter=Q(chat_sessions__is_archived=False)),
-        ).order_by("-created_at")
+        queryset = (
+            User.objects.all()
+            .annotate(
+                document_count=Count(
+                    "documents", filter=Q(documents__is_deleted=False)
+                ),
+                session_count=Count(
+                    "chat_sessions", filter=Q(chat_sessions__is_archived=False)
+                ),
+            )
+            .order_by("-created_at")
+        )
 
         # Filters
         role = self.request.query_params.get("role")

@@ -8,10 +8,9 @@ Supports multiple LLM providers through a unified interface:
 - Ollama (local)
 """
 
-from typing import Optional
+import structlog
 from django.conf import settings
 from langchain_core.language_models.chat_models import BaseChatModel
-import structlog
 
 logger = structlog.get_logger(__name__)
 
@@ -21,6 +20,7 @@ _llm_instances: dict[str, BaseChatModel] = {}
 
 class LLMProvider:
     """Available LLM providers."""
+
     GROQ = "groq"
     GEMINI = "gemini"
     OPENAI = "openai"
@@ -71,7 +71,7 @@ def get_llm(streaming: bool = True) -> BaseChatModel:
     logger.info(
         "llm_initialized",
         provider=provider,
-        model=llm.model if hasattr(llm, 'model') else 'unknown',
+        model=llm.model if hasattr(llm, "model") else "unknown",
         streaming=streaming,
     )
 
@@ -83,11 +83,11 @@ def _create_groq_llm(streaming: bool = True) -> BaseChatModel:
     from langchain_groq import ChatGroq
 
     return ChatGroq(
-        model=getattr(settings, "GROQ_MODEL", "llama-3.3-70b-versatile"),
-        api_key=getattr(settings, "GROQ_API_KEY", ""),
+        model=str(getattr(settings, "GROQ_MODEL", "llama-3.3-70b-versatile")),
+        api_key=str(getattr(settings, "GROQ_API_KEY", "")),  # type: ignore
         streaming=streaming,
-        temperature=settings.RAG_CONFIG.get("temperature", 0.3),
-        max_tokens=settings.RAG_CONFIG.get("max_output_tokens", 2048),
+        temperature=float(settings.RAG_CONFIG.get("temperature", 0.3)),
+        max_tokens=int(settings.RAG_CONFIG.get("max_output_tokens", 2048)),
     )
 
 
@@ -96,11 +96,11 @@ def _create_gemini_llm(streaming: bool = True) -> BaseChatModel:
     from langchain_google_genai import ChatGoogleGenerativeAI
 
     return ChatGoogleGenerativeAI(
-        model=getattr(settings, "GEMINI_MODEL", "gemini-2.0-flash-exp"),
-        google_api_key=settings.GOOGLE_API_KEY,
+        model=str(getattr(settings, "GEMINI_MODEL", "gemini-2.0-flash-exp")),
+        google_api_key=str(settings.GOOGLE_API_KEY),
         streaming=streaming,
-        temperature=settings.RAG_CONFIG.get("temperature", 0.3),
-        max_output_tokens=settings.RAG_CONFIG.get("max_output_tokens", 2048),
+        temperature=float(settings.RAG_CONFIG.get("temperature", 0.3)),
+        max_output_tokens=int(settings.RAG_CONFIG.get("max_output_tokens", 2048)),
         convert_system_message_to_human=True,
     )
 
@@ -113,44 +113,36 @@ def _create_openai_llm(streaming: bool = True) -> BaseChatModel:
     model = getattr(settings, "OPENAI_MODEL", "gpt-4o")
     api_key = getattr(settings, "OPENAI_API_KEY", "")
 
-    kwargs = {
-        "model": model,
-        "api_key": api_key,
-        "streaming": streaming,
-        "temperature": settings.RAG_CONFIG.get("temperature", 0.3),
-        "max_tokens": settings.RAG_CONFIG.get("max_output_tokens", 2048),
-    }
-
-    if base_url:
-        kwargs["base_url"] = base_url
-
-    return ChatOpenAI(**kwargs)
+    return ChatOpenAI(
+        model=model,
+        api_key=api_key,  # type: ignore
+        streaming=streaming,
+        temperature=float(settings.RAG_CONFIG.get("temperature", 0.3)),
+        max_tokens=int(settings.RAG_CONFIG.get("max_output_tokens", 2048)),  # type: ignore
+        base_url=base_url if base_url else None,
+    )
 
 
 def _create_ollama_llm(streaming: bool = True) -> BaseChatModel:
     """Create an Ollama LLM instance (local)."""
     try:
         from langchain_ollama import ChatOllama
-    except ImportError:
+    except ImportError as err:
         raise ImportError(
             "Ollama provider requires langchain-ollama. "
             "Install it with: pip install langchain-ollama"
-        )
+        ) from err
 
     model = getattr(settings, "OLLAMA_MODEL", "llama3.1:8b")
     base_url = getattr(settings, "OLLAMA_BASE_URL", "http://localhost:11434")
 
-    kwargs = {
-        "model": model,
-        "streaming": streaming,
-        "temperature": settings.RAG_CONFIG.get("temperature", 0.3),
-        "num_predict": settings.RAG_CONFIG.get("max_output_tokens", 2048),
-    }
-
-    if base_url:
-        kwargs["base_url"] = base_url
-
-    return ChatOllama(**kwargs)
+    return ChatOllama(
+        model=model,
+        streaming=streaming,
+        temperature=float(settings.RAG_CONFIG.get("temperature", 0.3)),
+        num_predict=int(settings.RAG_CONFIG.get("max_output_tokens", 2048)),
+        base_url=base_url if base_url else None,
+    )
 
 
 def clear_llm_cache():

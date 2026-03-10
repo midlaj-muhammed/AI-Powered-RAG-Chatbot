@@ -1,8 +1,6 @@
 """Metadata extraction — extract structured metadata from parsed documents."""
 
 import re
-from datetime import datetime
-from typing import Optional
 
 import structlog
 
@@ -50,7 +48,7 @@ def _extract_title(text: str, filename: str) -> str:
     return name.replace("_", " ").replace("-", " ").title()
 
 
-def _extract_author(text: str) -> Optional[str]:
+def _extract_author(text: str) -> str | None:
     """Look for author patterns in the document."""
     patterns = [
         r"(?:Author|Written by|Prepared by|Created by)[:\s]+([A-Z][a-zA-Z\s\-]+)",
@@ -65,7 +63,7 @@ def _extract_author(text: str) -> Optional[str]:
     return None
 
 
-def _extract_date(text: str) -> Optional[str]:
+def _extract_date(text: str) -> str | None:
     """Try to find a date in the document header."""
     patterns = [
         r"(?:Date|Updated|Published|Created)[:\s]+(\d{4}[-/]\d{1,2}[-/]\d{1,2})",

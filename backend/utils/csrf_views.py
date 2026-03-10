@@ -11,6 +11,7 @@ def csrf_failure_view(request, reason=""):
     Returns JSON for API requests, HTML for browser requests.
     """
     import structlog
+
     logger = structlog.get_logger(__name__)
 
     # Log the CSRF failure for security monitoring
@@ -63,7 +64,6 @@ def verify_csrf(request):
     Returns 204 if valid, 403 otherwise.
     """
     from django.middleware.csrf import get_token
-    from django.views.decorators.csrf import ensure_csrf_cookie
 
     # Ensure CSRF cookie is set
     get_token(request)

@@ -8,3 +8,14 @@ ignore = ["E501"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["apps", "config", "utils"]
+
+[tool.mypy]
+plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
+python_version = "3.11"
+strict = false
+ignore_missing_imports = true
+warn_unused_configs = true
+check_untyped_defs = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings.base"

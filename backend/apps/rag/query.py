@@ -1,8 +1,8 @@
 """Query processing — rewriting, expansion, and intent classification."""
 
 import json
+
 import structlog
-from django.conf import settings
 from langchain_core.messages import HumanMessage
 
 from apps.rag.llm import get_llm
@@ -42,7 +42,7 @@ def rewrite_query(user_query: str, chat_history: str = "") -> dict:
             chat_history=chat_history or "No previous conversation.",
         )
         response = llm.invoke([HumanMessage(content=prompt)])
-        raw = response.content.strip()
+        raw = str(response.content).strip()
 
         # Strip markdown fences if present
         if raw.startswith("```"):

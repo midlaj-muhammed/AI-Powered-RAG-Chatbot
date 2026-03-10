@@ -1,6 +1,10 @@
 import uuid
 
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+from django.contrib.auth.models import (
+    AbstractBaseUser,
+    BaseUserManager,
+    PermissionsMixin,
+)
 from django.db import models
 
 
@@ -20,7 +24,7 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault("role", UserRole.EDITOR)
         extra_fields.setdefault("is_active", True)
         user = self.model(email=email, **extra_fields)
-        user.set_password(password)
+        user.set_password(password)  # type: ignore
         user.save(using=self._db)
         return user
 

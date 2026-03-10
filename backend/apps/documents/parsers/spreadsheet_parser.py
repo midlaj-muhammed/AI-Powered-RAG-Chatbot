@@ -3,7 +3,6 @@
 import csv
 
 import openpyxl
-import pandas as pd
 
 from apps.documents.parsers.base import BaseParser, ParsedDocument
 
@@ -16,7 +15,7 @@ class CSVParser(BaseParser):
 
     def parse(self, file_path: str) -> ParsedDocument:
         rows = []
-        with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+        with open(file_path, encoding="utf-8", errors="replace") as f:
             reader = csv.reader(f)
             for row in reader:
                 rows.append(" | ".join(row))
@@ -58,4 +57,6 @@ class XLSXParser(BaseParser):
             "parser": "xlsx",
             "sheet_count": len(wb.sheetnames),
         }
-        return ParsedDocument(text=full_text, metadata=metadata, page_count=len(wb.sheetnames))
+        return ParsedDocument(
+            text=full_text, metadata=metadata, page_count=len(wb.sheetnames)
+        )

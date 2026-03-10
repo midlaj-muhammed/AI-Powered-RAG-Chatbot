@@ -1,8 +1,9 @@
-from rest_framework.views import exception_handler
-from rest_framework.response import Response
-from rest_framework import status
 import logging
 import traceback
+
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import exception_handler
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +13,11 @@ def custom_exception_handler(exc, context):
     response = exception_handler(exc, context)
 
     if response is not None:
-        view_name = context.get("view", None).__class__.__name__ if context.get("view") else None
+        view_name = (
+            context.get("view", None).__class__.__name__
+            if context.get("view")
+            else None
+        )
         logger.warning(
             "API error: %s %s %s",
             response.status_code,
@@ -21,7 +26,11 @@ def custom_exception_handler(exc, context):
         )
         response.data["status_code"] = response.status_code
     else:
-        view_name = context.get("view", None).__class__.__name__ if context.get("view") else None
+        view_name = (
+            context.get("view", None).__class__.__name__
+            if context.get("view")
+            else None
+        )
         logger.error(
             "Unhandled exception in %s: %s\n%s",
             view_name,

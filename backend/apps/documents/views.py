@@ -1,5 +1,7 @@
+import contextlib
 import os
 import uuid
+from typing import cast
 
 import structlog
 from django.conf import settings
@@ -17,7 +19,8 @@ from apps.documents.serializers import (
     DocumentUploadSerializer,
     TagSerializer,
 )
-from apps.users.permissions import IsAdmin, IsEditorOrAdmin, IsOwnerOrAdmin
+from apps.users.models import User
+from apps.users.permissions import IsEditorOrAdmin
 
 logger = structlog.get_logger(__name__)
 
@@ -54,10 +57,10 @@ class DocumentUploadView(APIView):
         # Get collection if provided
         collection = None
         if collection_id:
-            try:
-                collection = Collection.objects.get(id=collection_id, owner=request.user)
-            except Collection.DoesNotExist:
-                pass
+            with contextlib.suppress(Collection.DoesNotExist):
+                collection = Collection.objects.get(
+                    id=collection_id, owner=request.user
+                )
 
         # Create document record
         document = Document.objects.create(
@@ -74,6 +77,7 @@ class DocumentUploadView(APIView):
 
         # Queue async processing
         from django_q.tasks import async_task
+
         async_task(
             "apps.documents.tasks.process_document",
             str(document.id),
@@ -100,10 +104,15 @@ class DocumentListView(generics.ListAPIView):
     serializer_class = DocumentListSerializer
 
     def get_queryset(self):
-        queryset = Document.objects.filter(
-            uploaded_by=self.request.user,
-            is_deleted=False,
-        ).select_related("collection", "uploaded_by").prefetch_related("tags")
+        user = cast(User, self.request.user)
+        queryset = (
+            Document.objects.filter(
+                uploaded_by=user,
+                is_deleted=False,
+            )
+            .select_related("collection", "uploaded_by")
+            .prefetch_related("tags")
+        )
 
         # Filters
         collection_id = self.request.query_params.get("collection")
@@ -127,8 +136,9 @@ class DocumentDetailView(generics.RetrieveDestroyAPIView):
     serializer_class = DocumentDetailSerializer
 
     def get_queryset(self):
+        user = cast(User, self.request.user)
         return Document.objects.filter(
-            uploaded_by=self.request.user,
+            uploaded_by=user,
             is_deleted=False,
         ).prefetch_related("chunks", "tags")
 
@@ -139,10 +149,13 @@ class DocumentDetailView(generics.RetrieveDestroyAPIView):
 
         # Remove from vector store
         from apps.rag.vectorstore import delete_by_document_id
+
         try:
             delete_by_document_id(str(instance.id))
         except Exception as e:
-            logger.error("chroma_delete_failed", document_id=str(instance.id), error=str(e))
+            logger.error(
+                "chroma_delete_failed", document_id=str(instance.id), error=str(e)
+            )
 
         logger.info("document_deleted", document_id=str(instance.id))
 
@@ -186,9 +199,9 @@ class CollectionListCreateView(generics.ListCreateAPIView):
     permission_classes = (permissions.IsAuthenticated, IsEditorOrAdmin)
 
     def get_queryset(self):
-        return (
-            Collection.objects.filter(owner=self.request.user)
-            .annotate(document_count=Count("documents", filter=Q(documents__is_deleted=False)))
+        user = cast(User, self.request.user)
+        return Collection.objects.filter(owner=user).annotate(
+            document_count=Count("documents", filter=Q(documents__is_deleted=False))
         )
 
     def perform_create(self, serializer):
@@ -202,7 +215,8 @@ class CollectionDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = (permissions.IsAuthenticated, IsEditorOrAdmin)
 
     def get_queryset(self):
-        return Collection.objects.filter(owner=self.request.user)
+        user = cast(User, self.request.user)
+        return Collection.objects.filter(owner=user)
 
 
 # ---------- Tags ----------
@@ -215,10 +229,12 @@ class TagListCreateView(generics.ListCreateAPIView):
     permission_classes = (permissions.IsAuthenticated, IsEditorOrAdmin)
 
     def get_queryset(self):
-        return Tag.objects.filter(owner=self.request.user)
+        user = cast(User, self.request.user)
+        return Tag.objects.filter(owner=user)
 
     def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+        user = cast(User, self.request.user)
+        serializer.save(owner=user)
 
 
 class TagDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -228,7 +244,8 @@ class TagDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = (permissions.IsAuthenticated, IsEditorOrAdmin)
 
     def get_queryset(self):
-        return Tag.objects.filter(owner=self.request.user)
+        user = cast(User, self.request.user)
+        return Tag.objects.filter(owner=user)
 
 
 # ---------- Reprocess / Bulk Operations ----------
@@ -264,6 +281,7 @@ class DocumentReprocessView(APIView):
         document.save(update_fields=["status", "error_message"])
 
         from django_q.tasks import async_task
+
         async_task(
             "apps.documents.tasks.process_document",
             str(document.id),
@@ -304,16 +322,22 @@ class DocumentBulkActionView(APIView):
                 doc.is_deleted = True
                 doc.save(update_fields=["is_deleted"])
                 from apps.rag.vectorstore import delete_by_document_id
+
                 try:
                     delete_by_document_id(str(doc.id))
                 except Exception as e:
-                    logger.error("bulk_delete_chroma_error", doc_id=str(doc.id), error=str(e))
+                    logger.error(
+                        "bulk_delete_chroma_error", doc_id=str(doc.id), error=str(e)
+                    )
             return Response({"detail": f"{count} documents deleted."})
 
         elif action == "reprocess":
             from django_q.tasks import async_task
+
             count = 0
-            for doc in documents.filter(status__in=[DocumentStatus.ERROR, DocumentStatus.INDEXED]):
+            for doc in documents.filter(
+                status__in=[DocumentStatus.ERROR, DocumentStatus.INDEXED]
+            ):
                 if os.path.exists(doc.file_path):
                     doc.status = DocumentStatus.PENDING
                     doc.error_message = ""
@@ -330,7 +354,9 @@ class DocumentBulkActionView(APIView):
             collection_id = request.data.get("collection_id")
             if collection_id:
                 try:
-                    collection = Collection.objects.get(id=collection_id, owner=request.user)
+                    collection = Collection.objects.get(
+                        id=collection_id, owner=request.user
+                    )
                 except Collection.DoesNotExist:
                     return Response(
                         {"detail": "Collection not found."},

@@ -8,10 +8,9 @@ to ensure request integrity and authenticity.
 import hashlib
 import hmac
 import time
-from typing import Optional, Dict, Any
-from django.conf import settings
-from django.core.exceptions import PermissionDenied
+
 import structlog
+from django.conf import settings
 
 logger = structlog.get_logger(__name__)
 
@@ -25,6 +24,7 @@ TIMESTAMP_TOLERANCE_SECONDS = getattr(settings, "TIMESTAMP_TOLERANCE", 300)  # 5
 
 class RequestSignatureError(Exception):
     """Raised when request signature validation fails."""
+
     pass
 
 
@@ -57,15 +57,11 @@ def generate_signature(
     # Generate HMAC
     if SIGNING_ALGORITHM == "sha256":
         signature = hmac.new(
-            secret.encode(),
-            payload.encode(),
-            hashlib.sha256
+            secret.encode(), payload.encode(), hashlib.sha256
         ).hexdigest()
     elif SIGNING_ALGORITHM == "sha512":
         signature = hmac.new(
-            secret.encode(),
-            payload.encode(),
-            hashlib.sha512
+            secret.encode(), payload.encode(), hashlib.sha512
         ).hexdigest()
     else:
         raise ValueError(f"Unsupported signing algorithm: {SIGNING_ALGORITHM}")
@@ -112,11 +108,11 @@ def validate_request_signature(
                 raise RequestSignatureError(
                     f"Timestamp too old or in future. Tolerance: {TIMESTAMP_TOLERANCE_SECONDS}s"
                 )
-        except ValueError:
-            raise RequestSignatureError("Invalid timestamp format")
+        except ValueError as e:
+            raise RequestSignatureError("Invalid timestamp format") from e
 
     # Get request body
-    body = request.body.decode('utf-8') if request.body else ""
+    body = request.body.decode("utf-8") if request.body else ""
 
     # Build the URL
     url = request.path
@@ -129,7 +125,7 @@ def validate_request_signature(
         url,
         body,
         int(timestamp_header) if timestamp_header else 0,
-        secret
+        secret,
     )
 
     # Compare signatures securely
@@ -155,16 +151,19 @@ def require_signed_request(view_func):
             # View only processes signed requests
             return JsonResponse({"success": True})
     """
+
     def wrapper(request, *args, **kwargs):
         try:
             validate_request_signature(request)
         except RequestSignatureError as e:
             from django.http import JsonResponse
+
             return JsonResponse(
                 {"detail": str(e), "code": "invalid_signature"},
                 status=401,
             )
         return view_func(request, *args, **kwargs)
+
     return wrapper
 
 
@@ -179,9 +178,14 @@ def require_signed_request_or_admin(view_func):
             # Accepts either signed requests or authenticated admins
             return JsonResponse({"success": True})
     """
+
     def wrapper(request, *args, **kwargs):
         # Check if user is admin (staff)
-        if hasattr(request, 'user') and request.user.is_authenticated and request.user.is_staff:
+        if (
+            hasattr(request, "user")
+            and request.user.is_authenticated
+            and request.user.is_staff
+        ):
             return view_func(request, *args, **kwargs)
 
         # Otherwise, require signature
@@ -189,11 +193,13 @@ def require_signed_request_or_admin(view_func):
             validate_request_signature(request)
         except RequestSignatureError as e:
             from django.http import JsonResponse
+
             return JsonResponse(
                 {"detail": str(e), "code": "invalid_signature"},
                 status=401,
             )
         return view_func(request, *args, **kwargs)
+
     return wrapper
 
 
@@ -215,8 +221,8 @@ class SignedRequestClient:
         method: str,
         path: str,
         body: str = "",
-        query_params: Optional[Dict[str, str]] = None,
-    ) -> Dict[str, str]:
+        query_params: dict[str, str] | None = None,
+    ) -> dict[str, str]:
         """
         Generate headers for a signed request.
 
@@ -232,6 +238,7 @@ class SignedRequestClient:
         url = path
         if query_params:
             from urllib.parse import urlencode
+
             url += f"?{urlencode(query_params)}"
 
         timestamp = int(time.time())
@@ -296,7 +303,7 @@ def get_client_signature_headers(request):
 
 
 # Rate limiting based on signature to allow trusted clients higher limits
-def get_signature_rate_limit_key(request) -> Optional[str]:
+def get_signature_rate_limit_key(request) -> str | None:
     """
     Generate a rate limit key based on request signature.
     Allows signed requests to have different rate limits.

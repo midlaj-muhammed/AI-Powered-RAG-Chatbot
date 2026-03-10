@@ -21,11 +21,21 @@ urlpatterns = [
     path("bulk/", DocumentBulkActionView.as_view(), name="document-bulk"),
     path("<uuid:pk>/", DocumentDetailView.as_view(), name="document-detail"),
     path("<uuid:pk>/update/", DocumentUpdateView.as_view(), name="document-update"),
-    path("<uuid:pk>/download/", DocumentDownloadView.as_view(), name="document-download"),
-    path("<uuid:pk>/reprocess/", DocumentReprocessView.as_view(), name="document-reprocess"),
+    path(
+        "<uuid:pk>/download/", DocumentDownloadView.as_view(), name="document-download"
+    ),
+    path(
+        "<uuid:pk>/reprocess/",
+        DocumentReprocessView.as_view(),
+        name="document-reprocess",
+    ),
     # Collections
     path("collections/", CollectionListCreateView.as_view(), name="collection-list"),
-    path("collections/<uuid:pk>/", CollectionDetailView.as_view(), name="collection-detail"),
+    path(
+        "collections/<uuid:pk>/",
+        CollectionDetailView.as_view(),
+        name="collection-detail",
+    ),
     # Tags
     path("tags/", TagListCreateView.as_view(), name="tag-list"),
     path("tags/<uuid:pk>/", TagDetailView.as_view(), name="tag-detail"),

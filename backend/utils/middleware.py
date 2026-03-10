@@ -1,13 +1,11 @@
 """Custom security middleware for the RAG Chatbot."""
 
-import time
 from collections import defaultdict
-from typing import Optional
 
+import structlog
 from django.conf import settings
 from django.core.cache import cache
 from django.utils.deprecation import MiddlewareMixin
-import structlog
 
 logger = structlog.get_logger(__name__)
 
@@ -62,10 +60,10 @@ class RateLimitMiddleware(MiddlewareMixin):
     """Enhanced rate limiting with IP tracking and suspicious activity detection."""
 
     RATE_LIMITS = {
-        "default": 100,           # requests per minute
-        "auth": 5,                # login attempts per minute
-        "upload": 10,             # uploads per minute
-        "sensitive": 20,          # sensitive operations per minute
+        "default": 100,  # requests per minute
+        "auth": 5,  # login attempts per minute
+        "upload": 10,  # uploads per minute
+        "sensitive": 20,  # sensitive operations per minute
     }
 
     SUSPICIOUS_THRESHOLD = 10  # Failed attempts to flag as suspicious
@@ -77,7 +75,9 @@ class RateLimitMiddleware(MiddlewareMixin):
 
         # Get client IP (handle proxy headers)
         ip = self._get_client_ip(request)
-        user_id = getattr(request.user, "id", None) if hasattr(request, "user") else None
+        user_id = (
+            getattr(request.user, "id", None) if hasattr(request, "user") else None
+        )
 
         # Determine rate limit category
         category = self._get_request_category(request)
@@ -98,8 +98,11 @@ class RateLimitMiddleware(MiddlewareMixin):
             )
             # Return JSON response with rate limit headers
             from django.http import JsonResponse
+
             response = JsonResponse(
-                {"detail": f"Rate limit exceeded. Maximum {limit} requests per minute."},
+                {
+                    "detail": f"Rate limit exceeded. Maximum {limit} requests per minute."
+                },
                 status=429,
             )
             response["Retry-After"] = "60"
@@ -133,9 +136,12 @@ class RateLimitMiddleware(MiddlewareMixin):
             return "auth"
         elif "/upload/" in path and request.method == "POST":
             return "upload"
-        elif "/documents/" in path and request.method in ["POST", "DELETE", "PATCH"]:
-            return "sensitive"
-        elif "/users/" in path and request.method in ["POST", "DELETE", "PATCH"]:
+        elif (
+            "/documents/" in path
+            and request.method in ["POST", "DELETE", "PATCH"]
+            or "/users/" in path
+            and request.method in ["POST", "DELETE", "PATCH"]
+        ):
             return "sensitive"
 
         return "default"
@@ -162,8 +168,11 @@ class RequestSizeMiddleware(MiddlewareMixin):
                             path=request.path,
                         )
                         from django.http import JsonResponse
+
                         return JsonResponse(
-                            {"detail": f"Request body too large. Maximum {max_size // (1024*1024)}MB."},
+                            {
+                                "detail": f"Request body too large. Maximum {max_size // (1024 * 1024)}MB."
+                            },
                             status=413,
                         )
                 except (ValueError, TypeError):
@@ -184,13 +193,14 @@ class RequestIDMiddleware(MiddlewareMixin):
     def process_request(self, request):
         """Generate and attach request ID."""
         import uuid
-        request.id = getattr(request, 'id', str(uuid.uuid4()))
+
+        request.id = getattr(request, "id", str(uuid.uuid4()))
         return None
 
     def process_response(self, request, response):
         """Add request ID to response headers."""
-        if hasattr(request, 'id'):
-            response['X-Request-ID'] = request.id
+        if hasattr(request, "id"):
+            response["X-Request-ID"] = request.id
         return response
 
 
@@ -212,8 +222,11 @@ class IPBlacklistMiddleware(MiddlewareMixin):
                 path=request.path,
             )
             from django.http import JsonResponse
+
             response = JsonResponse(
-                {"detail": "Access denied. Your IP has been blocked due to suspicious activity."},
+                {
+                    "detail": "Access denied. Your IP has been blocked due to suspicious activity."
+                },
                 status=403,
             )
             response["X-Blocked-Reason"] = "IP_BLACKLIST"
@@ -269,7 +282,7 @@ class AttackDetectionMiddleware(MiddlewareMixin):
 
     def process_request(self, request):
         """Check request for attack patterns."""
-        if settings.DEBUG or not request.method in ["POST", "PUT", "PATCH"]:
+        if settings.DEBUG or request.method not in ["POST", "PUT", "PATCH"]:
             return None
 
         flagged = False
@@ -304,6 +317,7 @@ class AttackDetectionMiddleware(MiddlewareMixin):
             # Block suspicious IPs temporarily
             IPBlacklistMiddleware.block_ip(ip, duration_hours=1)
             from django.http import JsonResponse
+
             return JsonResponse(
                 {"detail": "Request blocked due to potential attack pattern."},
                 status=403,
@@ -314,7 +328,8 @@ class AttackDetectionMiddleware(MiddlewareMixin):
     def _check_for_patterns(self, value: str) -> bool:
         """Check if value matches any attack patterns."""
         import re
-        for pattern_name, patterns in self.PATTERNS.items():
+
+        for _pattern_name, patterns in self.PATTERNS.items():
             for pattern in patterns:
                 if re.search(pattern, value):
                     return True

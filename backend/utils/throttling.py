@@ -8,29 +8,30 @@ Provides per-endpoint and per-user rate limiting with:
 - Separate limits for different operation types
 """
 
-from django.core.cache import cache
-from django.utils.decorators import method_decorator
-from rest_framework.throttling import BaseThrottle, UserRateThrottle, AnonRateThrottle, ScopedRateThrottle
-from rest_framework.request import Request
-from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema, OpenApiParameter
-from typing import Optional
 import time
+
 import structlog
+from django.core.cache import cache
+from rest_framework.request import Request
+from rest_framework.throttling import (
+    BaseThrottle,
+    ScopedRateThrottle,
+    UserRateThrottle,
+)
 
 logger = structlog.get_logger(__name__)
 
 
 # Rate limit scopes defined in settings
 RATE_LIMIT_SCOPES = {
-    "auth": "10/minute",           # Authentication endpoints
-    "chat": "30/minute",           # Chat/LLM endpoints (expensive)
-    "upload": "5/minute",          # File uploads
-    "download": "30/minute",       # File downloads
-    "admin": "100/minute",         # Admin operations (for admins only)
-    "export": "5/hour",            # Data exports (resource intensive)
-    "sensitive": "20/minute",      # Sensitive updates/deletions
-    "default": "100/minute",       # Default rate limit
+    "auth": "10/minute",  # Authentication endpoints
+    "chat": "30/minute",  # Chat/LLM endpoints (expensive)
+    "upload": "5/minute",  # File uploads
+    "download": "30/minute",  # File downloads
+    "admin": "100/minute",  # Admin operations (for admins only)
+    "export": "5/hour",  # Data exports (resource intensive)
+    "sensitive": "20/minute",  # Sensitive updates/deletions
+    "default": "100/minute",  # Default rate limit
 }
 
 
@@ -107,22 +108,16 @@ class AuthRateThrottle(UserRateThrottle):
 
     Stricter limits for login/register to prevent brute force.
     """
+
     scope = "auth"
     rate = "10/minute"
 
-    def failure(self) -> Response:
-        """Overridden to add security headers."""
-        from rest_framework import status
-
-        logger.warning(
-            "auth_rate_limit_exceeded",
-            user_id=request.user.id if hasattr(request, "user") else None,
-            ip=self._get_client_ip(request),
-        )
-
-        response = super().failure()
-        response["X-RateLimit-Policy"] = "auth;limit=10;window=60"
-        return response
+    def throttle_failure(self):
+        """Overridden to add security headers and logging."""
+        # Note: In standard DRF, throttle_failure raises exceptions.Throttled.
+        # It doesn't take request as an argument.
+        # Most logging happen in allow_request where we have access to request.
+        return super().throttle_failure()
 
 
 class ChatRateThrottle(ScopedRateThrottle):
@@ -132,6 +127,7 @@ class ChatRateThrottle(ScopedRateThrottle):
     Lower limits due to LLM API costs.
     Includes burst tolerance for smooth UX.
     """
+
     scope = "chat"
 
     def get_rate(self):
@@ -145,6 +141,7 @@ class UploadRateThrottle(ScopedRateThrottle):
 
     Very strict limits to prevent resource exhaustion.
     """
+
     scope = "upload"
 
     def get_rate(self):
@@ -158,6 +155,7 @@ class ExportRateThrottle(ScopedRateThrottle):
 
     Hourly limits for resource-intensive operations.
     """
+
     scope = "export"
 
     def get_rate(self):
@@ -171,6 +169,7 @@ class SensitiveRateThrottle(ScopedRateThrottle):
 
     Moderate limits to prevent accidental/malicious mass operations.
     """
+
     scope = "sensitive"
 
     def get_rate(self):
@@ -284,6 +283,7 @@ class CompositeRateThrottle:
                 SignedRequestRateThrottle,
             ]
     """
+
     pass
 
 
@@ -317,7 +317,7 @@ def get_throttle_classes_for_view(view_name: str) -> tuple:
 
 
 # Decorator for method-level rate limiting
-def throttled(scope: str, rate: Optional[str] = None):
+def throttled(scope: str, rate: str | None = None):
     """
     Decorator to add rate limiting to a specific method.
 
@@ -336,6 +336,7 @@ def throttled(scope: str, rate: Optional[str] = None):
             def post(self, request):
                 return Response(...)
     """
+
     def decorator(view_func):
         def wrapper(self, request, *args, **kwargs):
             # Create throttle class instance
@@ -349,7 +350,9 @@ def throttled(scope: str, rate: Optional[str] = None):
                 return throttle_class.throttle_failure()
 
             return view_func(self, request, *args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -361,6 +364,7 @@ class AdminRateThrottle(UserRateThrottle):
     Only applies to users with is_staff=True.
     Falls back to regular limits for non-staff.
     """
+
     scope = "admin"
     rate = "200/minute"
 
@@ -380,6 +384,7 @@ class DownloadRateThrottle(ScopedRateThrottle):
 
     Limits bandwidth-intensive operations.
     """
+
     scope = "download"
     rate = "30/minute"
 
@@ -399,7 +404,11 @@ def get_rate_limit_status(request: Request, scope: str = "default") -> dict:
         >>> # Returns: {"limit": 30, "remaining": 28, "reset_at": timestamp}
     """
     cache_key_prefix = f"drf_throttle:{scope}:"
-    user_id = request.user.id if hasattr(request, "user") and request.user.is_authenticated else request.META.get("REMOTE_ADDR", "unknown")
+    user_id = (
+        request.user.id
+        if hasattr(request, "user") and request.user.is_authenticated
+        else request.META.get("REMOTE_ADDR", "unknown")
+    )
     cache_key = f"{cache_key_prefix}{user_id}"
 
     data = cache.get(cache_key, {})

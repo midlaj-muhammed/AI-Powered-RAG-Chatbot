@@ -15,8 +15,6 @@ import api from '@/api/client'
 import { adminApi } from '@/api/admin'
 import type {
   DashboardOverview,
-  QueryAnalytics,
-  TopDocumentsResponse,
 } from '@/api/types'
 
 export function DashboardPage() {

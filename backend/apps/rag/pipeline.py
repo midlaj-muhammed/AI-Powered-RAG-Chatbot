@@ -1,10 +1,10 @@
 import json
 import time
-from typing import Generator
+from collections.abc import Generator
 
 import structlog
 from django.conf import settings
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from apps.chat.models import ChatSession, Message, MessageRole
 from apps.rag.llm import get_llm
@@ -28,7 +28,7 @@ def _call_llm_with_retry(llm, messages, max_retries=3):
         except Exception as e:
             error_str = str(e)
             if "429" in error_str or "quota" in error_str.lower():
-                wait = min(2 ** attempt * 5, 30)
+                wait = min(2**attempt * 5, 30)
                 logger.warning(
                     "rate_limited_retry",
                     wait_seconds=wait,
@@ -44,11 +44,11 @@ def _call_llm_with_retry(llm, messages, max_retries=3):
 
 def _build_chat_history(session: ChatSession, limit: int = 10) -> str:
     """Build chat history string from recent messages."""
-    messages = session.messages.order_by("-created_at")[:limit]
-    messages = reversed(list(messages))
+    recent_messages = session.messages.order_by("-created_at")[:limit]
+    ordered_messages = reversed(list(recent_messages))
 
     history_parts = []
-    for msg in messages:
+    for msg in ordered_messages:
         role = "Human" if msg.role == MessageRole.USER else "Assistant"
         history_parts.append(f"{role}: {msg.content}")
 
@@ -65,19 +65,21 @@ def _build_context(search_results: list) -> tuple[str, list[dict]]:
 
     for i, (doc, score) in enumerate(search_results):
         metadata = doc.metadata
-        doc_name = metadata.get("filename", f"Document {i+1}")
+        doc_name = metadata.get("filename", f"Document {i + 1}")
         chunk_index = metadata.get("chunk_index", 0)
 
         context_parts.append(
             f"[Source: {doc_name}, Chunk {chunk_index}]\n{doc.page_content}\n"
         )
-        sources.append({
-            "document_name": doc_name,
-            "document_id": metadata.get("document_id", ""),
-            "chunk_index": chunk_index,
-            "relevance_score": round(score * 100, 1),
-            "snippet": doc.page_content[:200],
-        })
+        sources.append(
+            {
+                "document_name": doc_name,
+                "document_id": metadata.get("document_id", ""),
+                "chunk_index": chunk_index,
+                "relevance_score": round(score * 100, 1),
+                "snippet": doc.page_content[:200],
+            }
+        )
 
     return "\n---\n".join(context_parts), sources
 
@@ -116,7 +118,7 @@ def stream_chat_response(
 
     try:
         # 1. Save user message
-        user_msg = Message.objects.create(
+        Message.objects.create(
             session=session,
             role=MessageRole.USER,
             content=user_message,
@@ -140,7 +142,7 @@ def stream_chat_response(
 
         search_results = similarity_search(
             query=search_query,
-            k=settings.RAG_CONFIG["top_k"],
+            k=int(settings.RAG_CONFIG["top_k"]),
             filter_dict=filter_dict,
         )
 
@@ -216,8 +218,9 @@ def _generate_session_title(session: ChatSession, question: str) -> None:
         llm = get_llm(streaming=False)
         prompt = TITLE_GENERATION_PROMPT.format(question=question)
         response = llm.invoke([HumanMessage(content=prompt)])
-        title = response.content.strip().strip('"')[:60]
-        session.title = title
+        raw_content = response.content
+        title_text = str(raw_content).strip().strip('"')[:60]
+        session.title = title_text
         session.save(update_fields=["title"])
     except Exception as e:
         # Fallback to truncated question

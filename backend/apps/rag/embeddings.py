@@ -7,12 +7,14 @@ Supports multiple embedding providers:
 - mock: Deterministic hash-based mock embeddings for offline testing
 """
 
-from django.conf import settings
+from typing import Any
+
 import structlog
+from django.conf import settings
 
 logger = structlog.get_logger(__name__)
 
-_embeddings_instance = None
+_embeddings_instance: Any = None
 
 
 def get_embeddings():
@@ -84,21 +86,15 @@ class GeminiEmbeddings:
     def _get_client(self):
         """Lazily initialize the Google AI client."""
         if self._client is None:
-            import google.ai.generativelanguage as glm
-            import google.auth.credentials
-
             # Build client with API key transport
-            from google.ai.generativelanguage_v1beta import EmbedContentRequest
-            from google.ai.generativelanguage_v1beta.services.generative_service import (
-                GenerativeServiceClient,
-            )
-            from google.api_core.gapic_v1 import client_info as client_info_module
 
             # Use requests-based transport with API key
             self._client = None  # Will use REST calls instead
         return self._client
 
-    def _embed_text(self, text: str, task_type: str = "RETRIEVAL_DOCUMENT") -> list[float]:
+    def _embed_text(
+        self, text: str, task_type: str = "RETRIEVAL_DOCUMENT"
+    ) -> list[float]:
         """Embed a single text using the Google AI REST API."""
         import requests
 
@@ -111,7 +107,9 @@ class GeminiEmbeddings:
             "taskType": task_type,
         }
 
-        response = requests.post(url, json=payload, headers=headers, params=params, timeout=30)
+        response = requests.post(
+            url, json=payload, headers=headers, params=params, timeout=30
+        )
         if response.status_code != 200:
             raise ValueError(
                 f"Error embedding content: {response.status_code} {response.json().get('error', {}).get('message', response.text)}"
@@ -139,10 +137,14 @@ class GeminiEmbeddings:
         ]
         payload = {"requests": requests_payload}
 
-        response = requests.post(url, json=payload, headers=headers, params=params, timeout=60)
+        response = requests.post(
+            url, json=payload, headers=headers, params=params, timeout=60
+        )
         if response.status_code != 200:
             error_msg = response.json().get("error", {}).get("message", response.text)
-            raise ValueError(f"Error embedding content: {response.status_code} {error_msg}")
+            raise ValueError(
+                f"Error embedding content: {response.status_code} {error_msg}"
+            )
 
         data = response.json()
         return [emb["values"] for emb in data["embeddings"]]
@@ -157,13 +159,11 @@ def _create_openai_embeddings(model: str, api_key: str):
     from langchain_openai import OpenAIEmbeddings
 
     base_url = getattr(settings, "OPENAI_BASE_URL", None) or None
-    kwargs = {
-        "model": model or "text-embedding-3-small",
-        "api_key": api_key,
-    }
-    if base_url:
-        kwargs["base_url"] = base_url
-    return OpenAIEmbeddings(**kwargs)
+    return OpenAIEmbeddings(
+        model=model or "text-embedding-3-small",
+        api_key=api_key,  # type: ignore
+        base_url=base_url,
+    )
 
 
 class DeterministicMockEmbeddings:
@@ -184,7 +184,7 @@ class DeterministicMockEmbeddings:
         """Hash text into a deterministic unit vector."""
         import numpy as np
 
-        seed = hash(text) % (2 ** 32)
+        seed = hash(text) % (2**32)
         rng = np.random.RandomState(seed)
         vec = rng.randn(self.dimension)
         norm = np.linalg.norm(vec)

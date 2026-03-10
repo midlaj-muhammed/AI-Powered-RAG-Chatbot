@@ -27,7 +27,7 @@ RAG_USER_PROMPT = """Question: {question}
 
 Please provide a comprehensive answer based on the context above. Include source citations."""
 
-NO_CONTEXT_RESPONSE = """I couldn't find relevant information in the available documents to answer your question. 
+NO_CONTEXT_RESPONSE = """I couldn't find relevant information in the available documents to answer your question.
 
 Here's what you can try:
 - Rephrase your question with different keywords

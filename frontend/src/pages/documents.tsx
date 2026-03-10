@@ -25,10 +25,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Spinner } from '@/components/ui/spinner'
-import { toastError } from '@/components/ui/toast'
+import { toastError } from '@/components/ui/toast-lib'
 import { documentsApi } from '@/api/documents'
 import { adminApi } from '@/api/admin'
-import type { Document, Collection } from '@/api/types'
+import type { Document as RAGDocument } from '@/api/types'
 
 const statusConfig = {
   pending: { label: 'Pending', icon: Clock, variant: 'warning' as const },
@@ -54,7 +54,7 @@ export function DocumentsPage() {
   const [collectionFilter, setCollectionFilter] = useState('')
   const [showUpload, setShowUpload] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
-  const [selectedDoc, setSelectedDoc] = useState<Document | null>(null)
+  const [selectedDoc, setSelectedDoc] = useState<RAGDocument | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [showNewCollection, setShowNewCollection] = useState(false)
   const [newCollectionName, setNewCollectionName] = useState('')
@@ -80,15 +80,22 @@ export function DocumentsPage() {
       queryClient.invalidateQueries({ queryKey: ['documents'] })
       setShowUpload(false)
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       // Extract and display the actual error message
-      const errorMessage = error.response?.data?.detail ||
-                          error.response?.data?.file?.[0] ||
-                          error.response?.data?.message ||
-                          error.message ||
-                          'Upload failed. Please try again.'
+      let errorMessage = 'Upload failed. Please try again.'
+      if (error && typeof error === 'object' && 'response' in error) {
+        const errObj = error as { response?: { data?: { detail?: string; file?: string[]; message?: string } }; message?: string }
+        errorMessage =
+          errObj.response?.data?.detail ||
+          errObj.response?.data?.file?.[0] ||
+          errObj.response?.data?.message ||
+          errObj.message ||
+          errorMessage
+      } else if (error instanceof Error) {
+        errorMessage = error.message
+      }
       toastError(errorMessage)
-      console.error('Upload error:', error.response?.data || error)
+      console.error('Upload error:', error)
     },
   })
 
@@ -152,7 +159,7 @@ export function DocumentsPage() {
     e.target.value = ''
   }
 
-  const handleDownload = async (doc: Document) => {
+  const handleDownload = async (doc: RAGDocument) => {
     try {
       const blob = await documentsApi.downloadDocument(doc.id)
       const url = URL.createObjectURL(blob)
@@ -451,7 +458,6 @@ export function DocumentsPage() {
       {selectedDoc && (
         <DocumentDetailPanel
           document={selectedDoc}
-          collections={collections || []}
           onClose={() => setSelectedDoc(null)}
           onReprocess={() => reprocessMutation.mutate(selectedDoc.id)}
           onDelete={() => deleteMutation.mutate(selectedDoc.id)}
@@ -470,7 +476,7 @@ function DocumentCard({
   onDetail,
   onReprocess,
 }: {
-  document: Document
+  document: RAGDocument
   isSelected: boolean
   onSelect: () => void
   onDelete: () => void
@@ -598,7 +604,7 @@ function DocumentRow({
   onDetail,
   onReprocess,
 }: {
-  document: Document
+  document: RAGDocument
   isSelected: boolean
   onSelect: () => void
   onDelete: () => void
@@ -682,13 +688,11 @@ function DocumentRow({
 
 function DocumentDetailPanel({
   document: doc,
-  collections,
   onClose,
   onReprocess,
   onDelete,
 }: {
-  document: Document
-  collections: Collection[]
+  document: RAGDocument
   onClose: () => void
   onReprocess: () => void
   onDelete: () => void
@@ -727,9 +731,9 @@ function DocumentDetailPanel({
         </div>
 
         {/* Error */}
-        {doc.error_message && (
+        {!!doc.error_message && (
           <div className="rounded-lg bg-destructive/10 p-3 text-xs text-destructive">
-            {doc.error_message}
+            {String(doc.error_message)}
           </div>
         )}
 
@@ -745,19 +749,19 @@ function DocumentDetailPanel({
             {doc.indexed_at && (
               <MetadataRow label="Indexed" value={new Date(doc.indexed_at).toLocaleDateString()} />
             )}
-            {metadata.title && <MetadataRow label="Title" value={String(metadata.title)} />}
-            {metadata.author && <MetadataRow label="Author" value={String(metadata.author)} />}
-            {metadata.word_count && (
+            {!!metadata.title && <MetadataRow label="Title" value={String(metadata.title)} />}
+            {!!metadata.author && <MetadataRow label="Author" value={String(metadata.author)} />}
+            {!!metadata.word_count && (
               <MetadataRow label="Words" value={String(metadata.word_count)} />
             )}
-            {metadata.language && (
+            {!!metadata.language && (
               <MetadataRow label="Language" value={String(metadata.language)} />
             )}
           </div>
         </div>
 
         {/* Summary */}
-        {metadata.summary_preview && (
+        {!!metadata.summary_preview && (
           <div>
             <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
               Summary
@@ -769,20 +773,22 @@ function DocumentDetailPanel({
         )}
 
         {/* Topics */}
-        {metadata.detected_topics && Array.isArray(metadata.detected_topics) && metadata.detected_topics.length > 0 && (
-          <div>
-            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
-              Topics
-            </h4>
-            <div className="flex flex-wrap gap-1">
-              {(metadata.detected_topics as string[]).map((topic) => (
-                <Badge key={topic} variant="secondary" className="text-[10px]">
-                  {topic}
-                </Badge>
-              ))}
+        {!!metadata.detected_topics &&
+          Array.isArray(metadata.detected_topics) &&
+          metadata.detected_topics.length > 0 && (
+            <div>
+              <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+                Topics
+              </h4>
+              <div className="flex flex-wrap gap-1">
+                {(metadata.detected_topics as string[]).map((topic) => (
+                  <Badge key={topic} variant="outline" className="text-[10px]">
+                    {topic}
+                  </Badge>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         {/* Tags */}
         {doc.tags && doc.tags.length > 0 && (

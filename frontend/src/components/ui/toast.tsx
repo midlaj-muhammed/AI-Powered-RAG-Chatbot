@@ -1,22 +1,14 @@
-import { useEffect } from 'react'
 import { XCircle, AlertCircle, CheckCircle, Info } from 'lucide-react'
-import { create } from 'zustand'
+import { useToastStore, type ToastType } from './toast-lib'
 
-export type ToastType = 'error' | 'warning' | 'success' | 'info'
-
-export interface Toast {
-  id: string
-  type: ToastType
-  message: string
-  duration?: number
-}
-
-interface ToastStore {
-  toasts: Toast[]
-  addToast: (toast: Omit<Toast, 'id'>) => void
-  removeToast: (id: string) => void
-  clearAll: () => void
-}
+// Also re-export convenience functions for easier migration if needed, 
+// but it's better to import from toast-lib directly.
+// However, the existing code imports from @/components/ui/toast.
+// To avoid breaking many files, I'll re-export them here, but 
+// this might still trigger the React Refresh warning...
+// Wait, if I export them as functions, it should be fine if they ARE functions.
+// But the warning says "Use a new file to share constants or functions between components".
+// So I should NOT export them here if I export a component.
 
 const toastIcons = {
   error: XCircle,
@@ -32,37 +24,14 @@ const toastColors = {
   info: 'bg-blue-600 text-blue-50 border-blue-600',
 }
 
-export const useToastStore = create<ToastStore>((set) => ({
-  toasts: [],
-  addToast: (toast) => {
-    const id = crypto.randomUUID()
-    const newToast: Toast = { ...toast, id }
-    set((state) => ({ toasts: [...state.toasts, newToast] }))
-
-    // Auto-remove after duration
-    const duration = toast.duration ?? 5000
-    setTimeout(() => {
-      set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) }))
-    }, duration)
-
-    return id
-  },
-  removeToast: (id) => set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),
-  clearAll: () => set({ toasts: [] }),
-}))
-
-export function toast(type: ToastType, message: string, duration?: number) {
-  useToastStore.getState().addToast({ type, message, duration })
-}
-
 export function ToastContainer() {
   const { toasts, removeToast } = useToastStore()
 
   return (
     <div className="fixed right-4 top-4 z-50 flex flex-col gap-2">
       {toasts.map((t) => {
-        const Icon = toastIcons[t.type]
-        const colorClass = toastColors[t.type]
+        const Icon = toastIcons[t.type as ToastType]
+        const colorClass = toastColors[t.type as ToastType]
 
         return (
           <div
@@ -94,8 +63,8 @@ export function ToastContainer() {
   )
 }
 
-// Convenience functions
-export const toastError = (message: string) => toast('error', message)
-export const toastWarning = (message: string) => toast('warning', message)
-export const toastSuccess = (message: string) => toast('success', message)
-export const toastInfo = (message: string) => toast('info', message)
+// Export a dummy to satisfy imports that might still point here, 
+// but we'll need to update them to import from toast-lib.
+// Actually, I'll just re-export them from toast-lib in a separate step or 
+// use a barrel file.
+

@@ -11,6 +11,8 @@ faker>=24.0
 ruff>=0.4
 mypy>=1.10
 django-stubs>=5.0
+djangorestframework-stubs>=3.14
+types-requests
 
 # Development
 ipython>=8.0

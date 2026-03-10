@@ -1,11 +1,19 @@
 from django.contrib import admin
+
 from apps.chat.models import ChatSession, Message, MessageFeedback
 
 
 class MessageInline(admin.TabularInline):
     model = Message
     extra = 0
-    readonly_fields = ("id", "role", "content", "tokens_used", "latency_ms", "created_at")
+    readonly_fields = (
+        "id",
+        "role",
+        "content",
+        "tokens_used",
+        "latency_ms",
+        "created_at",
+    )
 
 
 @admin.register(ChatSession)
@@ -21,9 +29,9 @@ class MessageAdmin(admin.ModelAdmin):
     list_display = ("session", "role", "short_content", "tokens_used", "created_at")
     list_filter = ("role", "created_at")
 
+    @admin.display(description="Content")
     def short_content(self, obj):
         return obj.content[:80]
-    short_content.short_description = "Content"
 
 
 @admin.register(MessageFeedback)

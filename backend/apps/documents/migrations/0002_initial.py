@@ -6,63 +6,91 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
-        ('documents', '0001_initial'),
+        ("documents", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='collection',
-            name='owner',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='collections', to=settings.AUTH_USER_MODEL),
+            model_name="collection",
+            name="owner",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="collections",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AddField(
-            model_name='document',
-            name='collection',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='documents', to='documents.collection'),
+            model_name="document",
+            name="collection",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="documents",
+                to="documents.collection",
+            ),
         ),
         migrations.AddField(
-            model_name='document',
-            name='uploaded_by',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='documents', to=settings.AUTH_USER_MODEL),
+            model_name="document",
+            name="uploaded_by",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="documents",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AddField(
-            model_name='documentchunk',
-            name='document',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='chunks', to='documents.document'),
+            model_name="documentchunk",
+            name="document",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="chunks",
+                to="documents.document",
+            ),
         ),
         migrations.AddField(
-            model_name='tag',
-            name='owner',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='tags', to=settings.AUTH_USER_MODEL),
+            model_name="tag",
+            name="owner",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="tags",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AddField(
-            model_name='document',
-            name='tags',
-            field=models.ManyToManyField(blank=True, related_name='documents', to='documents.tag'),
+            model_name="document",
+            name="tags",
+            field=models.ManyToManyField(
+                blank=True, related_name="documents", to="documents.tag"
+            ),
         ),
         migrations.AlterUniqueTogether(
-            name='collection',
-            unique_together={('name', 'owner')},
+            name="collection",
+            unique_together={("name", "owner")},
         ),
         migrations.AlterUniqueTogether(
-            name='documentchunk',
-            unique_together={('document', 'chunk_index')},
+            name="documentchunk",
+            unique_together={("document", "chunk_index")},
         ),
         migrations.AlterUniqueTogether(
-            name='tag',
-            unique_together={('name', 'owner')},
+            name="tag",
+            unique_together={("name", "owner")},
         ),
         migrations.AddIndex(
-            model_name='document',
-            index=models.Index(fields=['uploaded_by', 'status'], name='documents_uploade_a09cb8_idx'),
+            model_name="document",
+            index=models.Index(
+                fields=["uploaded_by", "status"], name="documents_uploade_a09cb8_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='document',
-            index=models.Index(fields=['uploaded_by', '-created_at'], name='documents_uploade_918a8e_idx'),
+            model_name="document",
+            index=models.Index(
+                fields=["uploaded_by", "-created_at"],
+                name="documents_uploade_918a8e_idx",
+            ),
         ),
     ]
