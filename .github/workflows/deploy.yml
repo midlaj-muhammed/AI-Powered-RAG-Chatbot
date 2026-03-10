@@ -1,0 +1,194 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+          - production
+
+concurrency:
+  group: deploy-${{ github.event.inputs.environment || 'staging' }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository_owner }}/rag-chatbot
+
+jobs:
+  # ────────────────────────────────────────────────────────
+  # Build & push Docker images
+  # ────────────────────────────────────────────────────────
+  build-and-push:
+    name: Build & Push Images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_tag: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}
+          tags: |
+            type=sha,prefix=
+            type=ref,event=branch
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      # Backend image
+      - name: Build & push backend
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/backend.prod.Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-backend:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Frontend image
+      - name: Build & push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/frontend.prod.Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-frontend:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-frontend:latest
+          build-args: VITE_API_URL=/api
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ────────────────────────────────────────────────────────
+  # Deploy to Staging (auto on main push)
+  # ────────────────────────────────────────────────────────
+  deploy-staging:
+    name: Deploy → Staging
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && (github.event.inputs.environment == 'staging' || github.event.inputs.environment == '')
+    environment:
+      name: staging
+      url: ${{ vars.STAGING_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to staging server
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            cd ${{ vars.DEPLOY_PATH || '/opt/rag-chatbot' }}
+
+            # Pull latest images
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-backend:${{ github.sha }}
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-frontend:${{ github.sha }}
+
+            # Tag as current
+            docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-backend:${{ github.sha }} rag-backend:current
+            docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-frontend:${{ github.sha }} rag-frontend:current
+
+            # Update and restart
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            docker compose -f docker-compose.prod.yml exec -T backend python manage.py migrate --noinput
+            docker compose -f docker-compose.prod.yml exec -T backend python manage.py collectstatic --noinput
+
+      - name: Health check
+        run: |
+          for i in {1..12}; do
+            status=$(curl -s -o /dev/null -w "%{http_code}" "${{ vars.STAGING_URL }}/api/health/" || true)
+            if [ "$status" = "200" ]; then
+              echo "✅ Staging is healthy"
+              exit 0
+            fi
+            echo "Waiting for staging... (attempt $i/12, status: $status)"
+            sleep 10
+          done
+          echo "❌ Staging health check failed"
+          exit 1
+
+  # ────────────────────────────────────────────────────────
+  # Deploy to Production (manual approval required)
+  # ────────────────────────────────────────────────────────
+  deploy-production:
+    name: Deploy → Production
+    needs: [build-and-push, deploy-staging]
+    runs-on: ubuntu-latest
+    if: github.event.inputs.environment == 'production'
+    environment:
+      name: production
+      url: ${{ vars.PRODUCTION_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to production server
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script: |
+            cd ${{ vars.DEPLOY_PATH || '/opt/rag-chatbot' }}
+
+            # Pull latest images
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-backend:${{ github.sha }}
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-frontend:${{ github.sha }}
+
+            # Tag as current
+            docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-backend:${{ github.sha }} rag-backend:current
+            docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-frontend:${{ github.sha }} rag-frontend:current
+
+            # Rolling deploy
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            docker compose -f docker-compose.prod.yml exec -T backend python manage.py migrate --noinput
+            docker compose -f docker-compose.prod.yml exec -T backend python manage.py collectstatic --noinput
+
+            # Cleanup old images
+            docker image prune -f
+
+      - name: Health check
+        run: |
+          for i in {1..12}; do
+            status=$(curl -s -o /dev/null -w "%{http_code}" "${{ vars.PRODUCTION_URL }}/api/health/" || true)
+            if [ "$status" = "200" ]; then
+              echo "✅ Production is healthy"
+              exit 0
+            fi
+            echo "Waiting for production... (attempt $i/12, status: $status)"
+            sleep 10
+          done
+          echo "❌ Production health check failed"
+          exit 1
+
+      - name: Notify deployment
+        if: always()
+        run: |
+          echo "::notice ::Deployed ${{ github.sha }} to production at $(date -u)"
