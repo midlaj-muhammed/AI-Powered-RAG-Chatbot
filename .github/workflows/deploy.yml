@@ -95,10 +95,13 @@ jobs:
     environment:
       name: staging
       url: ${{ vars.STAGING_URL }}
+    env:
+      STAGING_HOST: ${{ secrets.STAGING_HOST }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Deploy to staging server
+        if: env.STAGING_HOST != ''
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.STAGING_HOST }}
@@ -122,6 +125,7 @@ jobs:
             docker compose -f docker-compose.prod.yml exec -T backend python manage.py collectstatic --noinput
 
       - name: Health check
+        if: env.STAGING_HOST != ''
         run: |
           for i in {1..12}; do
             status=$(curl -s -o /dev/null -w "%{http_code}" "${{ vars.STAGING_URL }}/api/health/" || true)
@@ -146,10 +150,13 @@ jobs:
     environment:
       name: production
       url: ${{ vars.PRODUCTION_URL }}
+    env:
+      PRODUCTION_HOST: ${{ secrets.PRODUCTION_HOST }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Deploy to production server
+        if: env.PRODUCTION_HOST != ''
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.PRODUCTION_HOST }}
@@ -175,6 +182,7 @@ jobs:
             docker image prune -f
 
       - name: Health check
+        if: env.PRODUCTION_HOST != ''
         run: |
           for i in {1..12}; do
             status=$(curl -s -o /dev/null -w "%{http_code}" "${{ vars.PRODUCTION_URL }}/api/health/" || true)
