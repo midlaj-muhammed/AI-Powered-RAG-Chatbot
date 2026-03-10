@@ -91,7 +91,7 @@ jobs:
     name: Deploy → Staging
     needs: build-and-push
     runs-on: ubuntu-latest
-    if: ${{ github.ref == 'refs/heads/main' && (github.event.inputs.environment == 'staging' || github.event.inputs.environment == '') && secrets.STAGING_HOST != '' }}
+    if: github.ref == 'refs/heads/main' && (github.event.inputs.environment == 'staging' || github.event.inputs.environment == '')
     environment:
       name: staging
       url: ${{ vars.STAGING_URL }}
@@ -142,7 +142,7 @@ jobs:
     name: Deploy → Production
     needs: [build-and-push, deploy-staging]
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.environment == 'production' && secrets.PRODUCTION_HOST != '' }}
+    if: github.event.inputs.environment == 'production'
     environment:
       name: production
       url: ${{ vars.PRODUCTION_URL }}
