@@ -13,7 +13,9 @@ An enterprise-grade Retrieval-Augmented Generation (RAG) chatbot for company dat
 ## ✨ Features
 
 - **🚀 RAG Chat** — Ask questions about your documents with AI-powered answers, streamed via SSE.
+- **🖼️ Multimodal Support** — Upload images and documents as context; Gemini Vision understands diagrams, tables, and screenshots.
 - **📂 Document Management** — Upload PDF, DOCX, CSV/XLSX, TXT, and Markdown files with automatic chunking and embedding.
+- **🔍 Hybrid & Semantic Search** — Uses `gemini-embedding-2-preview` for unified multimodal vector search across text and images.
 - **🏷️ Collections & Tags** — Organize documents into collections; scope queries to specific collections.
 - **📜 Query History** — Search, filter, and export past queries.
 - **🔖 Saved Searches** — Bookmark frequently used queries for one-click re-use.
@@ -28,9 +30,9 @@ An enterprise-grade Retrieval-Augmented Generation (RAG) chatbot for company dat
 |-------|-----------|
 | **Backend** | Python 3.11, Django 5, Django REST Framework |
 | **Frontend** | React 19, TypeScript 5, Vite 7, Tailwind CSS 4 |
-| **AI/ML** | Google Gemini 2.5 Flash, Gemini Embedding 001 |
+| **AI/ML** | Google Gemini 2.5 Flash, **Gemini Embedding 2.0 (Multimodal)** |
 | **RAG Framework** | LangChain 0.3+ |
-| **Vector Store** | ChromaDB |
+| **Vector Store** | ChromaDB (Auto-expanding) |
 | **Database** | PostgreSQL 15 |
 | **Cache / Queue** | Redis 7, Django-Q2 |
 | **Auth** | SimpleJWT (access 15 min / refresh 7 days) |
@@ -153,6 +155,14 @@ docker compose exec backend python manage.py createsuperuser
 ├── Makefile
 └── prd.md
 ```
+
+## 👁️ Vision & Multimodal RAG
+
+The platform now supports full multimodal RAG capabilities using Gemini 2.0:
+- **Image Parsing**: Images (JPEG, PNG, WEBP) are automatically processed by the `VisionParser`.
+- **Intelligent Descriptions**: Gemini generates context-rich text descriptions of images including OCR of any visible text.
+- **Unified Vector Space**: `gemini-embedding-2-preview` maps both text and image descriptions into the same semantic space for seamless retrieval.
+- **Chat Attachments**: Upload images directly in any chat session to ask questions about charts, diagrams, or visual data.
 
 ## 👥 User Roles
 
