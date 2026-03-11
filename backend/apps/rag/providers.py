@@ -96,7 +96,7 @@ def _create_gemini_llm(streaming: bool = True) -> BaseChatModel:
     from langchain_google_genai import ChatGoogleGenerativeAI
 
     return ChatGoogleGenerativeAI(
-        model=str(getattr(settings, "GEMINI_MODEL", "gemini-2.0-flash-exp")),
+        model=str(getattr(settings, "GEMINI_MODEL", "gemini-2.5-flash")),
         google_api_key=str(settings.GOOGLE_API_KEY),
         streaming=streaming,
         temperature=float(settings.RAG_CONFIG.get("temperature", 0.3)),

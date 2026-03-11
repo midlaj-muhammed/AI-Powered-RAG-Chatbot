@@ -8,12 +8,54 @@ import {
   ChevronDown,
   ChevronUp,
   FileText,
+  Film,
+  Music,
+  Download,
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn, formatDate } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { chatApi } from '@/api/chat'
-import type { Message, MessageSource } from '@/api/types'
+import type { Message, MessageSource, Attachment } from '@/api/types'
+
+function AttachmentPreview({ attachment }: { attachment: Attachment }) {
+  const isImage = attachment.mime_type.startsWith('image/')
+  const isVideo = attachment.mime_type.startsWith('video/')
+  const isAudio = attachment.mime_type.startsWith('audio/')
+
+  return (
+    <div className="group relative rounded-xl border border-border/50 bg-background/50 overflow-hidden transition-all hover:bg-background/80">
+      {isImage ? (
+        <a href={attachment.file_url} target="_blank" rel="noopener noreferrer">
+          <img
+            src={attachment.file_url}
+            alt={attachment.filename}
+            className="h-24 w-auto max-w-[200px] object-cover cursor-zoom-in"
+          />
+        </a>
+      ) : (
+        <div className="flex items-center gap-2 p-2 min-w-[140px]">
+          <div className="p-2 rounded-lg bg-primary/10">
+            {isVideo ? <Film className="h-4 w-4 text-primary" /> :
+              isAudio ? <Music className="h-4 w-4 text-primary" /> :
+                <FileText className="h-4 w-4 text-primary" />}
+          </div>
+          <div className="flex flex-col min-w-0 pr-6">
+            <span className="text-[11px] font-medium truncate">{attachment.filename}</span>
+            <span className="text-[10px] text-muted-foreground">{(attachment.file_size / 1024).toFixed(1)} KB</span>
+          </div>
+          <a
+            href={attachment.file_url}
+            download
+            className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <Download className="h-3.5 w-3.5" />
+          </a>
+        </div>
+      )}
+    </div>
+  )
+}
 
 interface MessageBubbleProps {
   message: Message
@@ -48,7 +90,16 @@ export function MessageBubble({ message, isStreaming }: MessageBubbleProps) {
         )}
       >
         {isUser ? (
-          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+          <div className="flex flex-col gap-2">
+            {message.attachments && message.attachments.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-1">
+                {message.attachments.map(att => (
+                  <AttachmentPreview key={att.id} attachment={att} />
+                ))}
+              </div>
+            )}
+            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+          </div>
         ) : (
           <div className="markdown-content text-sm">
             <ReactMarkdown>{message.content}</ReactMarkdown>

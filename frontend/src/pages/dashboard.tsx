@@ -10,7 +10,7 @@ import {
   Clock,
   BarChart3,
 } from 'lucide-react'
-import { Spinner } from '@/components/ui/spinner'
+import { PageLoader } from '@/components/ui/spinner'
 import api from '@/api/client'
 import { adminApi } from '@/api/admin'
 import type {
@@ -24,7 +24,12 @@ export function DashboardPage() {
       const { data } = await api.get('/admin-panel/dashboard/')
       return data
     },
-    refetchInterval: 30000,
+    refetchInterval: (query) => {
+      const data = query.state.data as DashboardOverview | undefined
+      const hasProcessing = data && (data.documents.processing > 0 || data.documents.pending > 0)
+      return hasProcessing ? 5000 : 30000
+    },
+    staleTime: 0,
   })
 
   const { data: usage } = useQuery({
@@ -43,11 +48,7 @@ export function DashboardPage() {
   })
 
   if (isLoading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Spinner />
-      </div>
-    )
+    return <PageLoader title="Fetching Analytics..." subtitle="Gathering latest system insights" />
   }
 
   if (!data) return null

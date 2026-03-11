@@ -115,7 +115,7 @@ function ChatInputTextArea({
             className={cn(
                 "max-h-[400px] min-h-0 resize-none overflow-x-hidden",
                 variant === "unstyled" &&
-                "border-none focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none focus-visible:ring-[0px] focus:outline-none focus:ring-0 shadow-none border-0",
+                "border-none focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none",
                 className,
             )}
             rows={rows}

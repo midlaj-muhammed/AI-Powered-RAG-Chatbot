@@ -1,7 +1,9 @@
-import SonicWaveformHero from '@/components/ui/sonic-waveform';
+import HeroSectionNexus from '@/components/ui/hero-section-nexus';
 import { Link } from 'react-router-dom';
-import { Bot, Github, Twitter, Linkedin, Database, Shield, Zap, Cpu, CheckCircle2, Layers, Search } from 'lucide-react';
+import { Bot, Github, Twitter, Linkedin, Database, Shield, Zap, Cpu, CheckCircle2, Layers, Search, Image, Film, Music, Home, CreditCard } from 'lucide-react';
 import { motion, type Variants } from 'framer-motion';
+import { NavBar } from '@/components/ui/tube-light-navbar';
+import SpotlightCards, { type SpotlightItem } from '@/components/ui/spotlight-cards';
 
 // --- Smooth Scroll Helper ---
 const scrollToSection = (id: string) => {
@@ -28,42 +30,42 @@ const staggerContainer: Variants = {
 // --- Subcomponents ---
 
 function FeaturesSection() {
-    const features = [
+    const spotlightFeatures: SpotlightItem[] = [
         {
-            icon: <Database className="h-6 w-6 text-teal-400" />,
-            title: "Vector Data Pipeline",
-            desc: "Ingest PDFs, CSVs, and integrations. Automatically chunked and embedded via Gemini 1.5 Pro.",
-            glow: "bg-teal-500/10"
+            icon: Database,
+            title: "Multimodal Data Pipeline",
+            description: "Ingest PDFs, Images, Video, and Audio. Automatically chunked and indexed via Gemini 1.5 Vision and Flash.",
+            color: "#2DD4BF" // teal-400
         },
         {
-            icon: <Zap className="h-6 w-6 text-emerald-400" />,
+            icon: Zap,
             title: "Zero-Latency Retrieval",
-            desc: "Distributed ChromaDB vector searches guarantee sub-millisecond context gathering.",
-            glow: "bg-emerald-500/10"
+            description: "Distributed ChromaDB vector searches guarantee sub-millisecond context gathering.",
+            color: "#10B981" // emerald-500
         },
         {
-            icon: <Shield className="h-6 w-6 text-purple-400" />,
+            icon: Shield,
             title: "Enterprise Security",
-            desc: "Role-based access control and namespace segregation. Your data never trains public models.",
-            glow: "bg-purple-500/10"
+            description: "Role-based access control and namespace segregation. Your data never trains public models.",
+            color: "#A855F7" // purple-500
         },
         {
-            icon: <Cpu className="h-6 w-6 text-blue-400" />,
+            icon: Cpu,
             title: "LangChain Orchestration",
-            desc: "Complex multi-step reasoning agents that route queries dynamically based on semantic intent.",
-            glow: "bg-blue-500/10"
+            description: "Complex multi-step reasoning agents that route queries dynamically based on semantic intent.",
+            color: "#60A5FA" // blue-400
         },
         {
-            icon: <Search className="h-6 w-6 text-rose-400" />,
+            icon: Search,
             title: "Hybrid Search",
-            desc: "Combines dense vector similarity with sparse keyword matching for unparalleled accuracy.",
-            glow: "bg-rose-500/10"
+            description: "Combines dense vector similarity with sparse keyword matching for unparalleled accuracy.",
+            color: "#F43F5E" // rose-500
         },
         {
-            icon: <Layers className="h-6 w-6 text-amber-400" />,
+            icon: Layers,
             title: "Infinite Memory",
-            desc: "Persistent Chat History and Conversation buffers allow the AI to remember infinite context.",
-            glow: "bg-amber-500/10"
+            description: "Persistent Chat History and Conversation buffers allow the AI to remember infinite context.",
+            color: "#F59E0B" // amber-500
         }
     ];
 
@@ -98,22 +100,8 @@ function FeaturesSection() {
                     whileInView="visible"
                     viewport={{ once: true, margin: "-100px" }}
                     variants={staggerContainer}
-                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
                 >
-                    {features.map((f, i) => (
-                        <motion.div
-                            key={i}
-                            variants={fadeInUp}
-                            className="group relative rounded-3xl border border-white/10 bg-[#0A0A0A] p-8 overflow-hidden transition-all hover:bg-[#111] hover:border-white/20"
-                        >
-                            <div className={`absolute -right-10 -top-10 h-32 w-32 rounded-full blur-[50px] transition-opacity opacity-20 group-hover:opacity-60 ${f.glow}`} />
-                            <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-white/5 border border-white/10">
-                                {f.icon}
-                            </div>
-                            <h3 className="text-xl font-semibold text-white mb-3">{f.title}</h3>
-                            <p className="text-sm text-white/50 leading-relaxed">{f.desc}</p>
-                        </motion.div>
-                    ))}
+                    <SpotlightCards items={spotlightFeatures} />
                 </motion.div>
             </div>
         </section>
@@ -145,8 +133,8 @@ function ArchitectureSection() {
 
                         <motion.div variants={staggerContainer} className="space-y-6">
                             {[
-                                "1. Documents are parsed and split into semantic chunks.",
-                                "2. Chunks are embedded into 3072-dimensional vectors.",
+                                "1. Documents and media (Images/Video) are parsed into semantic fragments.",
+                                "2. Content is embedded into 3072-dimensional multimodal vectors.",
                                 "3. Vectors are indexed in a high-speed ChromaDB collection.",
                                 "4. User queries are embedded and compared via Cosine Similarity."
                             ].map((step, i) => (
@@ -189,9 +177,15 @@ function ArchitectureSection() {
                                     <div className="h-3 w-32 rounded-full bg-white/20" />
                                 </div>
                                 <div className="flex gap-2">
-                                    <div className="h-8 w-8 rounded-md bg-teal-500/20 border border-teal-500/30" />
-                                    <div className="h-8 w-8 rounded-md bg-teal-500/20 border border-teal-500/30" />
-                                    <div className="h-8 w-8 rounded-md bg-white/5 border border-white/10" />
+                                    <div className="h-10 w-10 rounded-lg bg-teal-500/20 border border-teal-500/30 flex items-center justify-center">
+                                        <Image className="h-5 w-5 text-teal-400" />
+                                    </div>
+                                    <div className="h-10 w-10 rounded-lg bg-teal-500/20 border border-teal-500/30 flex items-center justify-center">
+                                        <Film className="h-5 w-5 text-teal-400" />
+                                    </div>
+                                    <div className="h-10 w-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center">
+                                        <Music className="h-5 w-5 text-white/50" />
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -301,31 +295,36 @@ function PricingSection() {
 
 // --- Main Page ---
 export function LandingPage() {
+    const navItems = [
+        { name: 'Home', url: '#', icon: Home },
+        { name: 'Features', url: '#features', icon: Zap },
+        { name: 'Architecture', url: '#architecture', icon: Cpu },
+        { name: 'Pricing', url: '#pricing', icon: CreditCard }
+    ];
+
     return (
         <main className="min-h-screen bg-[#050505] selection:bg-teal-500/30">
 
-            {/* GLASSSMORPHIC NAVBAR */}
-            <nav className="fixed top-0 inset-x-0 z-50 h-20 border-b border-white/5 bg-[#050505]/60 backdrop-blur-xl supports-[backdrop-filter]:bg-[#050505]/40 transition-all">
-                <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-6 lg:px-12">
+            {/* TUBE LIGHT NAVBAR */}
+            <NavBar items={navItems} />
 
-                    {/* Logo */}
-                    <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="group flex items-center gap-3 cursor-pointer">
+            {/* HEADER WITH AUTH ACTIONS */}
+            <header className="fixed top-0 inset-x-0 z-[190] h-20 px-6 lg:px-12 pointer-events-none">
+                <div className="mx-auto flex h-full max-w-7xl items-center justify-between">
+                    {/* Logo - clickable */}
+                    <button
+                        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                        className="group flex items-center gap-3 cursor-pointer pointer-events-auto"
+                    >
                         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-teal-500/20 to-emerald-500/20 shadow-[0_0_20px_rgba(20,184,166,0.2)] border border-teal-500/30 transition-transform group-hover:scale-105">
                             <Bot className="h-5 w-5 text-teal-400" />
                         </div>
-                        <span className="font-bold tracking-tight text-white text-xl">NexusAI</span>
+                        <span className="font-bold tracking-tight text-white text-xl hidden sm:inline">NexusAI</span>
                     </button>
 
-                    {/* Links */}
-                    <div className="hidden md:flex items-center gap-8">
-                        <button onClick={() => scrollToSection('features')} className="text-sm font-medium text-white/50 hover:text-white transition-colors cursor-pointer">Platform</button>
-                        <button onClick={() => scrollToSection('architecture')} className="text-sm font-medium text-white/50 hover:text-white transition-colors cursor-pointer">Architecture</button>
-                        <button onClick={() => scrollToSection('pricing')} className="text-sm font-medium text-white/50 hover:text-white transition-colors cursor-pointer">Pricing</button>
-                    </div>
-
                     {/* Auth CTA */}
-                    <div className="flex items-center gap-4">
-                        <Link to="/login" className="hidden sm:block text-sm font-medium text-white/70 hover:text-white transition">
+                    <div className="flex items-center gap-4 pointer-events-auto">
+                        <Link to="/login" className="text-sm font-medium text-white/70 hover:text-white transition">
                             Sign In
                         </Link>
                         <Link
@@ -335,12 +334,11 @@ export function LandingPage() {
                             Get Started
                         </Link>
                     </div>
-
                 </div>
-            </nav>
+            </header>
 
-            {/* SONIC WAVEFORM HERO */}
-            <SonicWaveformHero />
+            {/* NEW HERO SECTION */}
+            <HeroSectionNexus />
 
             {/* NEW SECTIONS */}
             <FeaturesSection />

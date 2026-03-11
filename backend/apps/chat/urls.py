@@ -11,9 +11,11 @@ from apps.chat.views import (
     SavedSearchListCreateView,
     SendMessageView,
     ToggleFavoriteView,
+    AttachmentUploadView,
 )
 
 urlpatterns = [
+    path("attachments/upload/", AttachmentUploadView.as_view(), name="attachment-upload"),
     path("sessions/", ChatSessionListCreateView.as_view(), name="chat-sessions"),
     path(
         "sessions/<uuid:pk>/",

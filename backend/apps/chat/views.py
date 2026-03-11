@@ -81,9 +81,10 @@ class SendMessageView(APIView):
 
         content = serializer.validated_data["content"]
         collection = serializer.validated_data.get("collection", "default")
+        attachment_ids = serializer.validated_data.get("attachment_ids", [])
 
         response = StreamingHttpResponse(
-            stream_chat_response(session, content, collection),
+            stream_chat_response(session, content, collection, attachment_ids),
             content_type="text/event-stream",
         )
         response["Cache-Control"] = "no-cache"
@@ -119,6 +120,53 @@ class MessageFeedbackView(APIView):
         return Response(
             MessageFeedbackSerializer(feedback).data,
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
+
+class AttachmentUploadView(APIView):
+    """Upload a file for use as a chat attachment."""
+
+    def post(self, request):
+        file_obj = request.FILES.get("file")
+        if not file_obj:
+            return Response(
+                {"detail": "No file provided."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from django.conf import settings
+        
+        # Validate size
+        if file_obj.size > settings.MAX_UPLOAD_SIZE:
+            return Response(
+                {"detail": f"File too large. Max size is {settings.MAX_UPLOAD_SIZE // (1024*1024)}MB."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+            
+        # Validate MIME type
+        if file_obj.content_type not in settings.ALLOWED_UPLOAD_TYPES:
+            return Response(
+                {"detail": f"File type {file_obj.content_type} not supported for chat attachments."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from apps.chat.models import MessageAttachment
+
+        attachment = MessageAttachment.objects.create(
+            message=None,  # Will be linked when the message is sent
+            file=file_obj,
+            mime_type=file_obj.content_type,
+            file_size=file_obj.size,
+            filename=file_obj.name,
+        )
+
+        return Response(
+            {
+                "id": str(attachment.id),
+                "filename": attachment.filename,
+                "mime_type": attachment.mime_type,
+            },
+            status=status.HTTP_201_CREATED,
         )
 
 

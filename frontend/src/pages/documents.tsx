@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Upload,
@@ -24,8 +24,9 @@ import { cn, formatFileSize, formatDate } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Spinner } from '@/components/ui/spinner'
+import { PageLoader } from '@/components/ui/spinner'
 import { toastError } from '@/components/ui/toast-lib'
+import FileUpload from '@/components/ui/file-upload'
 import { documentsApi } from '@/api/documents'
 import { adminApi } from '@/api/admin'
 import type { Document as RAGDocument } from '@/api/types'
@@ -44,6 +45,13 @@ const mimeIcons: Record<string, string> = {
   'text/csv': '📊',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '📘',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '📊',
+  'image/jpeg': '🖼️',
+  'image/png': '🖼️',
+  'image/webp': '🖼️',
+  'video/mp4': '🎥',
+  'video/quicktime': '🎥',
+  'audio/mpeg': '🎵',
+  'audio/wav': '🎵',
 }
 
 export function DocumentsPage() {
@@ -53,7 +61,6 @@ export function DocumentsPage() {
   const [statusFilter, setStatusFilter] = useState('')
   const [collectionFilter, setCollectionFilter] = useState('')
   const [showUpload, setShowUpload] = useState(false)
-  const [isDragging, setIsDragging] = useState(false)
   const [selectedDoc, setSelectedDoc] = useState<RAGDocument | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [showNewCollection, setShowNewCollection] = useState(false)
@@ -67,6 +74,14 @@ export function DocumentsPage() {
         status: statusFilter || undefined,
         collection: collectionFilter || undefined,
       }),
+    refetchInterval: (query) => {
+      const data = query.state.data as any
+      const hasProcessing = data?.results?.some(
+        (doc: any) => doc.status === 'pending' || doc.status === 'processing'
+      )
+      return hasProcessing ? 2000 : 30000 // Poll every 2s if processing, else 30s
+    },
+    staleTime: 0,
   })
 
   const { data: collections } = useQuery({
@@ -142,22 +157,6 @@ export function DocumentsPage() {
       setCollectionFilter('')
     },
   })
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault()
-      setIsDragging(false)
-      const files = Array.from(e.dataTransfer.files)
-      files.forEach((file) => uploadMutation.mutate(file))
-    },
-    [uploadMutation]
-  )
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    files.forEach((file) => uploadMutation.mutate(file))
-    e.target.value = ''
-  }
 
   const handleDownload = async (doc: RAGDocument) => {
     try {
@@ -259,7 +258,15 @@ export function DocumentsPage() {
         <div className="border-b border-border px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-lg font-semibold">Documents</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg font-semibold">Documents</h1>
+                {docsData?.results?.some((d: any) => d.status === 'pending' || d.status === 'processing') && (
+                  <Badge variant="default" className="gap-1.5 h-6 animate-pulse bg-primary/10 text-primary border-primary/20 hover:bg-primary/20">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <span className="text-[10px] font-medium">Processing...</span>
+                  </Badge>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground">
                 Upload and manage your knowledge base documents
               </p>
@@ -359,48 +366,27 @@ export function DocumentsPage() {
 
         {/* Upload zone */}
         {showUpload && (
-          <div
-            className={cn(
-              'mx-6 mt-4 rounded-xl border-2 border-dashed p-8 text-center transition-colors',
-              isDragging
-                ? 'border-primary bg-primary/5'
-                : 'border-border hover:border-muted-foreground'
-            )}
-            onDragOver={(e) => {
-              e.preventDefault()
-              setIsDragging(true)
-            }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={handleDrop}
-          >
-            <Upload className="mx-auto h-10 w-10 text-muted-foreground" />
-            <p className="mt-3 text-sm font-medium">
-              Drag & drop files here, or{' '}
-              <label className="cursor-pointer text-primary hover:underline">
-                browse
-                <input
-                  type="file"
-                  className="hidden"
-                  multiple
-                  accept=".pdf,.txt,.md,.csv,.docx,.xlsx"
-                  onChange={handleFileSelect}
-                />
-              </label>
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              PDF, DOCX, TXT, MD, CSV, XLSX — Max 50MB per file
-            </p>
-            {uploadMutation.isPending && (
-              <div className="mt-3 flex items-center justify-center gap-2">
-                <Spinner className="h-4 w-4" />
-                <span className="text-sm text-muted-foreground">Uploading...</span>
-              </div>
-            )}
-            {uploadMutation.isError && (
-              <p className="mt-3 text-sm text-destructive">
-                Upload failed. Please try again.
-              </p>
-            )}
+          <div className="mx-6 mt-4">
+            <FileUpload
+              onUploadSuccess={(file) => uploadMutation.mutate(file)}
+              acceptedFileTypes={[
+                "application/pdf",
+                "text/plain",
+                "text/markdown",
+                "text/csv",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "image/jpeg",
+                "image/png",
+                "image/webp",
+                "video/mp4",
+                "video/quicktime",
+                "audio/mpeg",
+                "audio/wav"
+              ]}
+              maxFileSize={50 * 1024 * 1024} // 50MB
+              uploadDelay={1000} // Faster simulation for reactive feel
+            />
           </div>
         )}
 
@@ -408,7 +394,7 @@ export function DocumentsPage() {
         <div className="flex-1 overflow-y-auto p-6">
           {isLoading ? (
             <div className="flex items-center justify-center py-20">
-              <Spinner />
+              <PageLoader title="Indexing Knowledge Base..." subtitle="Scanning and organizing your documents" />
             </div>
           ) : documents.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20">
@@ -522,7 +508,10 @@ function DocumentCard({
 
       {/* Status */}
       <div className="mt-3 flex items-center gap-2">
-        <Badge variant={status.variant}>
+        <Badge
+          variant={status.variant}
+          className={cn(doc.status === 'pending' && 'animate-pulse')}
+        >
           <StatusIcon
             className={cn(
               'mr-1 h-3 w-3',
@@ -647,7 +636,10 @@ function DocumentRow({
           {doc.collection_name}
         </Badge>
       )}
-      <Badge variant={status.variant}>
+      <Badge
+        variant={status.variant}
+        className={cn(doc.status === 'pending' && 'animate-pulse')}
+      >
         <StatusIcon
           className={cn('mr-1 h-3 w-3', doc.status === 'processing' && 'animate-spin')}
         />

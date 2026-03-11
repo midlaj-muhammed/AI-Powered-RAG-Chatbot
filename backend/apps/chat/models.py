@@ -73,6 +73,29 @@ class Message(TimeStampedModel):
         return f"[{self.role}] {self.content[:50]}"
 
 
+class MessageAttachment(TimeStampedModel):
+    """File attachment for a chat message."""
+
+    message = models.ForeignKey(
+        Message,
+        on_delete=models.CASCADE,
+        related_name="attachments",
+        null=True,
+        blank=True,
+    )
+    file = models.FileField(upload_to="chat/attachments/%Y/%m/%d/")
+    mime_type = models.CharField(max_length=100)
+    file_size = models.BigIntegerField()
+    filename = models.CharField(max_length=255)
+
+    class Meta:
+        db_table = "message_attachments"
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"{self.filename} ({self.mime_type})"
+
+
 class MessageFeedback(models.Model):
     """Thumbs up/down feedback on AI messages."""
 

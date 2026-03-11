@@ -52,10 +52,20 @@ export interface MessageFeedback {
   comment: string
 }
 
+export interface Attachment {
+  id: string
+  filename: string
+  mime_type: string
+  file_size: number
+  file_url: string
+  created_at: string
+}
+
 export interface Message {
   id: string
   role: 'user' | 'assistant' | 'system'
   content: string
+  attachments?: Attachment[]
   tokens_used: number | null
   latency_ms: number | null
   sources: MessageSource[]

@@ -22,7 +22,7 @@ import { chatApi } from '@/api/chat'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Spinner } from '@/components/ui/spinner'
+import { PageLoader } from '@/components/ui/spinner'
 import type { QueryHistoryItem } from '@/api/types'
 
 export function HistoryPage() {
@@ -241,7 +241,7 @@ export function HistoryPage() {
             {/* Results */}
             {historyLoading ? (
               <div className="flex justify-center py-12">
-                <Spinner />
+                <PageLoader title="Retrieving History..." subtitle="Accessing your secure query vault" />
               </div>
             ) : !historyData?.results?.length ? (
               <div className="py-12 text-center text-muted-foreground">
@@ -456,7 +456,7 @@ export function HistoryPage() {
             {/* Saved list */}
             {savedLoading ? (
               <div className="flex justify-center py-12">
-                <Spinner />
+                <PageLoader title="Loading Saved Searches..." subtitle="Syncing your bookmarked queries" />
               </div>
             ) : !savedData?.results?.length ? (
               <div className="py-12 text-center text-muted-foreground">

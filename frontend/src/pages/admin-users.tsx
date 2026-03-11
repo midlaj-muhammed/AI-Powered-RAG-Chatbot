@@ -15,7 +15,7 @@ import { cn, formatDate } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Spinner } from '@/components/ui/spinner'
+import { PageLoader } from '@/components/ui/spinner'
 import { adminApi } from '@/api/admin'
 import { useAuthStore } from '@/stores/auth-store'
 import type { AdminUser } from '@/api/types'
@@ -92,7 +92,7 @@ export function AdminUsersPage() {
       <div className="flex-1 overflow-y-auto p-6">
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
-            <Spinner />
+            <PageLoader title="Syncing User Directory..." subtitle="Retrieving latest permission matrix" />
           </div>
         ) : users.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">

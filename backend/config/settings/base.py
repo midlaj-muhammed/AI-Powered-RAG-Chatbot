@@ -311,7 +311,7 @@ LOGGING = {
 
 # Google AI Configuration (fallback provider)
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash-exp")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
 # Groq Configuration (recommended free provider)
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
@@ -339,7 +339,7 @@ EMBEDDING_API_KEY = os.environ.get("EMBEDDING_API_KEY", "")
 # RAG Configuration Defaults
 RAG_CONFIG = {
     "top_k": 5,
-    "similarity_threshold": 0.3,
+    "similarity_threshold": 0.1,
     "max_context_tokens": 4000,
     "chunk_size": 800,
     "chunk_overlap": 200,
@@ -358,6 +358,27 @@ ALLOWED_UPLOAD_TYPES = [
     "text/csv",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    # Multimodal support
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/heic",
+    "image/heif",
+    "video/mp4",
+    "video/mpeg",
+    "video/mov",
+    "video/avi",
+    "video/x-flv",
+    "video/mpg",
+    "video/webm",
+    "video/wmv",
+    "video/3gpp",
+    "audio/wav",
+    "audio/mp3",
+    "audio/aiff",
+    "audio/aac",
+    "audio/ogg",
+    "audio/flac",
 ]
 MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB
 

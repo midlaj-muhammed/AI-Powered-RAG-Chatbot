@@ -9,6 +9,7 @@ import { ChatInput } from '@/components/chat/chat-input'
 import { MessageBubble } from '@/components/chat/message-bubble'
 import { toastError, toastWarning } from '@/components/ui/toast-lib'
 import type { Message } from '@/api/types'
+import AITextLoading from '@/components/ui/ai-text-loading'
 
 export function ChatPage() {
   const {
@@ -57,7 +58,7 @@ export function ChatPage() {
   }, [])
 
   const handleSend = useCallback(
-    async (content: string) => {
+    async (content: string, attachmentIds?: string[]) => {
       let sessionId = activeSessionId
       userMessageRef.current = content
 
@@ -88,6 +89,7 @@ export function ChatPage() {
         is_favorite: false,
         feedback: null,
         created_at: new Date().toISOString(),
+        // attachments field might need to be added to Message type if it's not there
       }
       addMessage(userMessage)
 
@@ -98,7 +100,7 @@ export function ChatPage() {
       try {
         let fullContent = ''
 
-        for await (const event of chatApi.sendMessage(sessionId, content, selectedCollection)) {
+        for await (const event of chatApi.sendMessage(sessionId, content, selectedCollection, attachmentIds)) {
           if (abortRef.current?.signal.aborted) break
 
           switch (event.type) {
@@ -248,14 +250,21 @@ export function ChatPage() {
 
               {/* Typing indicator */}
               {isStreaming && !streamingContent && (
-                <div className="flex items-center gap-3 px-4 py-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20">
+                <div className="flex items-start gap-3 px-4 py-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 shrink-0 mt-1">
                     <Sparkles className="h-4 w-4 text-primary animate-pulse" />
                   </div>
-                  <div className="flex gap-1">
-                    <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/50" style={{ animationDelay: '0ms' }} />
-                    <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/50" style={{ animationDelay: '150ms' }} />
-                    <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/50" style={{ animationDelay: '300ms' }} />
+                  <div className="flex-1">
+                    <AITextLoading
+                      className="text-lg font-medium"
+                      texts={[
+                        "Thinking...",
+                        "Searching docs...",
+                        "Analyzing sources...",
+                        "Almost there...",
+                        "Finalizing answer..."
+                      ]}
+                    />
                   </div>
                 </div>
               )}

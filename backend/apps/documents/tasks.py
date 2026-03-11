@@ -3,7 +3,7 @@
 import structlog
 from django.conf import settings
 from django.utils import timezone
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from apps.documents.metadata import extract_metadata
 from apps.documents.models import Document, DocumentChunk, DocumentStatus
@@ -62,10 +62,20 @@ def process_document(document_id: str) -> None:
         )
 
         # Step 2: Chunk the text
-        rag_config = settings.RAG_CONFIG
+        rag_config = getattr(settings, "RAG_CONFIG", {})
+        chunk_size = rag_config.get("chunk_size", 800)
+        chunk_overlap = rag_config.get("chunk_overlap", 200)
+
+        logger.info(
+            "chunking_start",
+            document_id=document_id,
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+        )
+
         splitter = RecursiveCharacterTextSplitter(
-            chunk_size=rag_config["chunk_size"],
-            chunk_overlap=rag_config["chunk_overlap"],
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
             length_function=len,
             separators=["\n\n", "\n", ". ", " ", ""],
         )

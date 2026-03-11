@@ -30,10 +30,20 @@ export const chatApi = {
     await api.delete(`/chat/sessions/${id}/`)
   },
 
+  uploadAttachment: async (file: File): Promise<{ id: string; filename: string; mime_type: string }> => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const { data } = await api.post('/chat/attachments/upload/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return data
+  },
+
   sendMessage: async function* (
     sessionId: string,
     content: string,
-    collection?: string
+    collection?: string,
+    attachmentIds?: string[]
   ): AsyncGenerator<SSEEvent> {
     const token = useAuthStore.getState().accessToken
     const baseUrl = import.meta.env.VITE_API_URL || '/api'
@@ -44,7 +54,7 @@ export const chatApi = {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ content, collection }),
+      body: JSON.stringify({ content, collection, attachment_ids: attachmentIds }),
     })
 
     if (!response.ok) {

@@ -4,8 +4,8 @@ import { Suspense, lazy } from 'react'
 import { ErrorBoundary } from '@/components/error-boundary'
 import { AppLayout } from '@/components/layout/app-layout'
 import { AuthGuard, GuestGuard } from '@/components/auth/auth-guard'
-import { Spinner } from '@/components/ui/spinner'
 import { ToastContainer } from '@/components/ui/toast'
+import { PageLoader } from '@/components/ui/spinner'
 
 // Lazy-loaded pages for code splitting
 const LoginPage = lazy(() => import('@/pages/login').then(m => ({ default: m.LoginPage })))
@@ -27,11 +27,8 @@ const queryClient = new QueryClient({
   },
 })
 
-const PageFallback = () => (
-  <div className="flex h-full items-center justify-center">
-    <Spinner />
-  </div>
-)
+
+const PageFallback = () => <PageLoader />
 
 export default function App() {
   return (

@@ -5,6 +5,7 @@ from apps.documents.parsers.docx_parser import DocxParser
 from apps.documents.parsers.pdf_parser import PDFParser
 from apps.documents.parsers.spreadsheet_parser import CSVParser, XLSXParser
 from apps.documents.parsers.text_parser import TextParser
+from apps.documents.parsers.vision_parser import VisionParser
 
 _PARSERS: list[BaseParser] = [
     PDFParser(),
@@ -12,6 +13,7 @@ _PARSERS: list[BaseParser] = [
     DocxParser(),
     CSVParser(),
     XLSXParser(),
+    VisionParser(),
 ]
 
 

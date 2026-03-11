@@ -32,7 +32,7 @@ def get_embeddings():
         return _embeddings_instance
 
     provider = getattr(settings, "EMBEDDING_PROVIDER", "").lower().strip()
-    model = getattr(settings, "EMBEDDING_MODEL", "text-embedding-004")
+    model = getattr(settings, "EMBEDDING_MODEL", "gemini-embedding-2-preview")
     api_key = getattr(settings, "EMBEDDING_API_KEY", "").strip()
 
     # Auto-detect provider from available API keys if not explicitly configured
@@ -71,87 +71,86 @@ def get_embeddings():
 
 class GeminiEmbeddings:
     """
-    Google Gemini embeddings using the google-ai-generativelanguage library directly.
+    Google Gemini embeddings using the google-genai library.
 
-    This bypasses the langchain_google_genai wrapper which uses v1beta and has
-    compatibility issues with text-embedding-004. We call the REST API directly
-    using the google-ai-generativelanguage client which supports the v1 endpoint.
+    Supports multimodal embeddings (text, image, video, audio, PDF)
+    mapped into a unified vector space.
     """
 
-    def __init__(self, model: str = "text-embedding-004", api_key: str = ""):
+    def __init__(self, model: str = "gemini-embedding-2-preview", api_key: str = ""):
         self.model = model
         self.api_key = api_key
         self._client = None
 
     def _get_client(self):
-        """Lazily initialize the Google AI client."""
+        """Lazily initialize the Google GenAI client."""
         if self._client is None:
-            # Build client with API key transport
+            from google import genai
 
-            # Use requests-based transport with API key
-            self._client = None  # Will use REST calls instead
+            self._client = genai.Client(api_key=self.api_key)
         return self._client
 
-    def _embed_text(
-        self, text: str, task_type: str = "RETRIEVAL_DOCUMENT"
-    ) -> list[float]:
-        """Embed a single text using the Google AI REST API."""
-        import requests
+    def embed_content(self, parts: list[Any], task_type: str = "RETRIEVAL_DOCUMENT") -> list[float]:
+        """
+        Embed multimodal content parts.
+        Parts can be strings or binary data with mime types.
+        """
+        client = self._get_client()
+        from google.genai import types
 
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:embedContent"
-        headers = {"Content-Type": "application/json"}
-        params = {"key": self.api_key}
-        payload = {
-            "model": f"models/{self.model}",
-            "content": {"parts": [{"text": text}]},
-            "taskType": task_type,
-        }
+        config = types.EmbedContentConfig(task_type=task_type)
+        
+        # Convert internal parts to GenAI parts if necessary
+        contents = []
+        for part in parts:
+            if isinstance(part, str):
+                contents.append(part)
+            elif isinstance(part, dict) and "data" in part and "mime_type" in part:
+                contents.append(types.Part.from_bytes(
+                    data=part["data"],
+                    mime_type=part["mime_type"]
+                ))
+            else:
+                contents.append(part)
 
-        response = requests.post(
-            url, json=payload, headers=headers, params=params, timeout=30
+        result = client.models.embed_content(
+            model=self.model,
+            contents=contents,
+            config=config
         )
-        if response.status_code != 200:
-            raise ValueError(
-                f"Error embedding content: {response.status_code} {response.json().get('error', {}).get('message', response.text)}"
-            )
-
-        data = response.json()
-        return data["embedding"]["values"]
+        
+        return result.embeddings[0].values
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        """Embed multiple document texts using RETRIEVAL_DOCUMENT task type."""
-        import requests
+        """Embed multiple document texts."""
+        client = self._get_client()
+        from google.genai import types
 
-        # Use batchEmbedContents for efficiency
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:batchEmbedContents"
-        headers = {"Content-Type": "application/json"}
-        params = {"key": self.api_key}
-
-        requests_payload = [
-            {
-                "model": f"models/{self.model}",
-                "content": {"parts": [{"text": text}]},
-                "taskType": "RETRIEVAL_DOCUMENT",
-            }
-            for text in texts
-        ]
-        payload = {"requests": requests_payload}
-
-        response = requests.post(
-            url, json=payload, headers=headers, params=params, timeout=60
+        config = types.EmbedContentConfig(task_type="RETRIEVAL_DOCUMENT")
+        
+        # Batch call
+        result = client.models.embed_content(
+            model=self.model,
+            contents=texts,
+            config=config
         )
-        if response.status_code != 200:
-            error_msg = response.json().get("error", {}).get("message", response.text)
-            raise ValueError(
-                f"Error embedding content: {response.status_code} {error_msg}"
-            )
-
-        data = response.json()
-        return [emb["values"] for emb in data["embeddings"]]
+        
+        return [e.values for e in result.embeddings]
 
     def embed_query(self, text: str) -> list[float]:
-        """Embed a single query using RETRIEVAL_QUERY task type."""
-        return self._embed_text(text, task_type="RETRIEVAL_QUERY")
+        """Embed a single query."""
+        client = self._get_client()
+        from google.genai import types
+
+        config = types.EmbedContentConfig(task_type="RETRIEVAL_QUERY")
+        
+        result = client.models.embed_content(
+            model=self.model,
+            contents=text,
+            config=config
+        )
+        
+        return result.embeddings[0].values
 
 
 def _create_openai_embeddings(model: str, api_key: str):

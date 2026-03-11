@@ -14,10 +14,27 @@ def sanitize_text(text: str) -> str:
     return text.strip()
 
 
+class AttachmentSerializer(serializers.ModelSerializer):
+    """Serializer for message attachments."""
+
+    file_url = serializers.SerializerMethodField()
+
+    class Meta:
+        from apps.chat.models import MessageAttachment
+        model = MessageAttachment
+        fields = ("id", "filename", "mime_type", "file_size", "file_url", "created_at")
+
+    def get_file_url(self, obj):
+        if obj.file:
+            return obj.file.url
+        return None
+
+
 class MessageSerializer(serializers.ModelSerializer):
     """Serializer for chat messages."""
 
     feedback = serializers.SerializerMethodField()
+    attachments = AttachmentSerializer(many=True, read_only=True)
 
     class Meta:
         model = Message
@@ -25,6 +42,7 @@ class MessageSerializer(serializers.ModelSerializer):
             "id",
             "role",
             "content",
+            "attachments",
             "tokens_used",
             "latency_ms",
             "sources",
@@ -47,6 +65,7 @@ class MessageSerializer(serializers.ModelSerializer):
     def get_feedback(self, obj):
         if hasattr(obj, "feedback"):
             try:
+                from apps.chat.models import MessageFeedback
                 return {
                     "is_helpful": obj.feedback.is_helpful,
                     "comment": obj.feedback.comment,
@@ -120,6 +139,9 @@ class SendMessageSerializer(serializers.Serializer):
         },
     )
     collection = serializers.CharField(required=False, default="default")
+    attachment_ids = serializers.ListField(
+        child=serializers.UUIDField(), required=False, default=list
+    )
 
     def validate_content(self, value):
         """Sanitize and validate message content."""

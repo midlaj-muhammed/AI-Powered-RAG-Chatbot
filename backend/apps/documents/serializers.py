@@ -10,10 +10,17 @@ FILE_SIGNATURES = {
     b"\x25\x50\x44\x46": "application/pdf",
     # PNG - PNG
     b"\x89\x50\x4e\x47": "image/png",
+    # JPEG - \xff\xd8\xff
+    b"\xff\xd8\xff": "image/jpeg",
+    # WebP - RIFF....WEBP
+    b"RIFF": "image/webp",  # Simplified RIFF check
     # ZIP/DOCX/XLSX - PK
     b"\x50\x4b\x03\x04": "application/zip",
     b"\x50\x4b\x05\x06": "application/zip",
-    # Plain text files start with readable ASCII
+    # MP4 - ....ftyp
+    b"\x00\x00\x00": "video/mp4", # Simplified check for box start
+    # MP3 - ID3 or raw
+    b"ID3": "audio/mpeg",
 }
 
 
@@ -213,7 +220,12 @@ class DocumentUploadSerializer(serializers.Serializer):
 
         # Check allowed MIME types from header (with fallback to extension)
         filename_lower = value.name.lower()
-        allowed_extensions = {".pdf", ".txt", ".md", ".csv", ".docx", ".xlsx"}
+        allowed_extensions = {
+            ".pdf", ".txt", ".md", ".csv", ".docx", ".xlsx",
+            ".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif",
+            ".mp4", ".mpeg", ".mov", ".avi", ".flv", ".mpg", ".webm", ".wmv", ".3gp",
+            ".wav", ".mp3", ".aiff", ".aac", ".ogg", ".flac"
+        }
 
         # First check by claimed MIME type
         mime_allowed = value.content_type in settings.ALLOWED_UPLOAD_TYPES
@@ -225,7 +237,8 @@ class DocumentUploadSerializer(serializers.Serializer):
 
         if not mime_allowed and not extension_allowed:
             raise serializers.ValidationError(
-                "File type is not supported. Allowed types: PDF, DOCX, TXT, MD, CSV, XLSX."
+                "File type is not supported. Allowed types: PDF, DOCX, TXT, MD, CSV, XLSX, "
+                "Images (JPG, PNG, WEBP), Video (MP4, MOV, etc.), and Audio (MP3, WAV, etc.)."
             )
 
         # Verify MIME type matches actual file content (prevent spoofing)
