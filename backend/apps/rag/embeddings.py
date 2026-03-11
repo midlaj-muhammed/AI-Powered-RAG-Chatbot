@@ -80,7 +80,7 @@ class GeminiEmbeddings:
     def __init__(self, model: str = "gemini-embedding-2-preview", api_key: str = ""):
         self.model = model
         self.api_key = api_key
-        self._client = None
+        self._client: Any = None
 
     def _get_client(self):
         """Lazily initialize the Google GenAI client."""
@@ -90,7 +90,9 @@ class GeminiEmbeddings:
             self._client = genai.Client(api_key=self.api_key)
         return self._client
 
-    def embed_content(self, parts: list[Any], task_type: str = "RETRIEVAL_DOCUMENT") -> list[float]:
+    def embed_content(
+        self, parts: list[Any], task_type: str = "RETRIEVAL_DOCUMENT"
+    ) -> list[float]:
         """
         Embed multimodal content parts.
         Parts can be strings or binary data with mime types.
@@ -99,26 +101,25 @@ class GeminiEmbeddings:
         from google.genai import types
 
         config = types.EmbedContentConfig(task_type=task_type)
-        
+
         # Convert internal parts to GenAI parts if necessary
-        contents = []
+        contents: list[Any] = []
         for part in parts:
             if isinstance(part, str):
                 contents.append(part)
             elif isinstance(part, dict) and "data" in part and "mime_type" in part:
-                contents.append(types.Part.from_bytes(
-                    data=part["data"],
-                    mime_type=part["mime_type"]
-                ))
+                contents.append(
+                    types.Part.from_bytes(
+                        data=part["data"], mime_type=part["mime_type"]
+                    )
+                )
             else:
                 contents.append(part)
 
         result = client.models.embed_content(
-            model=self.model,
-            contents=contents,
-            config=config
+            model=self.model, contents=contents, config=config
         )
-        
+
         return result.embeddings[0].values
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
@@ -127,14 +128,12 @@ class GeminiEmbeddings:
         from google.genai import types
 
         config = types.EmbedContentConfig(task_type="RETRIEVAL_DOCUMENT")
-        
+
         # Batch call
         result = client.models.embed_content(
-            model=self.model,
-            contents=texts,
-            config=config
+            model=self.model, contents=texts, config=config
         )
-        
+
         return [e.values for e in result.embeddings]
 
     def embed_query(self, text: str) -> list[float]:
@@ -143,13 +142,11 @@ class GeminiEmbeddings:
         from google.genai import types
 
         config = types.EmbedContentConfig(task_type="RETRIEVAL_QUERY")
-        
+
         result = client.models.embed_content(
-            model=self.model,
-            contents=text,
-            config=config
+            model=self.model, contents=text, config=config
         )
-        
+
         return result.embeddings[0].values
 
 

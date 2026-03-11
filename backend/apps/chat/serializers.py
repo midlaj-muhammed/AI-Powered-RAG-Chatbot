@@ -21,6 +21,7 @@ class AttachmentSerializer(serializers.ModelSerializer):
 
     class Meta:
         from apps.chat.models import MessageAttachment
+
         model = MessageAttachment
         fields = ("id", "filename", "mime_type", "file_size", "file_url", "created_at")
 
@@ -66,6 +67,7 @@ class MessageSerializer(serializers.ModelSerializer):
         if hasattr(obj, "feedback"):
             try:
                 from apps.chat.models import MessageFeedback
+
                 return {
                     "is_helpful": obj.feedback.is_helpful,
                     "comment": obj.feedback.comment,

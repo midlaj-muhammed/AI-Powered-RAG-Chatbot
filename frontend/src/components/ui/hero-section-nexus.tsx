@@ -130,9 +130,10 @@ const RotatingText = forwardRef<RotatingTextRef, RotatingTextProps>(
                 switch (staggerFrom) {
                     case "first": return index * stagger;
                     case "last": return (total - 1 - index) * stagger;
-                    case "center":
+                    case "center": {
                         const center = (total - 1) / 2;
                         return Math.abs(center - index) * stagger;
+                    }
                     case "random": return Math.random() * (total - 1) * stagger;
                     default:
                         if (typeof staggerFrom === 'number') {
@@ -268,6 +269,16 @@ interface Dot {
     currentRadius: number;
 }
 
+const DOT_SPACING = 25;
+const BASE_OPACITY_MIN = 0.40;
+const BASE_OPACITY_MAX = 0.50;
+const BASE_RADIUS = 1;
+const INTERACTION_RADIUS = 150;
+const INTERACTION_RADIUS_SQ = INTERACTION_RADIUS * INTERACTION_RADIUS;
+const OPACITY_BOOST = 0.6;
+const RADIUS_BOOST = 2.5;
+const GRID_CELL_SIZE = Math.max(50, Math.floor(INTERACTION_RADIUS / 1.5));
+
 export const HeroSectionNexus: React.FC = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const animationFrameId = useRef<number | null>(null);
@@ -276,16 +287,6 @@ export const HeroSectionNexus: React.FC = () => {
     const gridRef = useRef<Record<string, number[]>>({});
     const canvasSizeRef = useRef<{ width: number; height: number }>({ width: 0, height: 0 });
     const mousePositionRef = useRef<{ x: number | null; y: number | null }>({ x: null, y: null });
-
-    const DOT_SPACING = 25;
-    const BASE_OPACITY_MIN = 0.40;
-    const BASE_OPACITY_MAX = 0.50;
-    const BASE_RADIUS = 1;
-    const INTERACTION_RADIUS = 150;
-    const INTERACTION_RADIUS_SQ = INTERACTION_RADIUS * INTERACTION_RADIUS;
-    const OPACITY_BOOST = 0.6;
-    const RADIUS_BOOST = 2.5;
-    const GRID_CELL_SIZE = Math.max(50, Math.floor(INTERACTION_RADIUS / 1.5));
 
     const handleMouseMove = useCallback((event: globalThis.MouseEvent) => {
         const canvas = canvasRef.current;
@@ -338,7 +339,7 @@ export const HeroSectionNexus: React.FC = () => {
         }
         dotsRef.current = newDots;
         gridRef.current = newGrid;
-    }, [DOT_SPACING, GRID_CELL_SIZE, BASE_OPACITY_MIN, BASE_OPACITY_MAX, BASE_RADIUS]);
+    }, []);
 
     const handleResize = useCallback(() => {
         const canvas = canvasRef.current;
@@ -356,16 +357,19 @@ export const HeroSectionNexus: React.FC = () => {
         }
     }, [createDots]);
 
+    // Use a function declaration to avoid TDZ issues with recursive calls
+    // while keeping it stable by defining it once or using the same reference
     const animateDots = useCallback(() => {
         const canvas = canvasRef.current;
-        const ctx = canvas?.getContext('2d');
+        if (!canvas) return;
+
+        const ctx = canvas.getContext('2d');
         const dots = dotsRef.current;
         const grid = gridRef.current;
         const { width, height } = canvasSizeRef.current;
         const { x: mouseX, y: mouseY } = mousePositionRef.current;
 
         if (!ctx || !dots || !grid || width === 0 || height === 0) {
-            animationFrameId.current = requestAnimationFrame(animateDots);
             return;
         }
 
@@ -424,9 +428,7 @@ export const HeroSectionNexus: React.FC = () => {
             ctx.arc(dot.x, dot.y, dot.currentRadius, 0, Math.PI * 2);
             ctx.fill();
         });
-
-        animationFrameId.current = requestAnimationFrame(animateDots);
-    }, [GRID_CELL_SIZE, INTERACTION_RADIUS, INTERACTION_RADIUS_SQ, OPACITY_BOOST, RADIUS_BOOST, BASE_OPACITY_MIN, BASE_OPACITY_MAX, BASE_RADIUS]);
+    }, []);
 
     useEffect(() => {
         handleResize();
@@ -438,8 +440,11 @@ export const HeroSectionNexus: React.FC = () => {
         window.addEventListener('resize', handleResize);
         document.documentElement.addEventListener('mouseleave', handleMouseLeave);
 
-
-        animationFrameId.current = requestAnimationFrame(animateDots);
+        const animate = () => {
+            animateDots();
+            animationFrameId.current = requestAnimationFrame(animate);
+        };
+        animationFrameId.current = requestAnimationFrame(animate);
 
         return () => {
             window.removeEventListener('resize', handleResize);

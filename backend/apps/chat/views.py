@@ -135,18 +135,22 @@ class AttachmentUploadView(APIView):
             )
 
         from django.conf import settings
-        
+
         # Validate size
         if file_obj.size > settings.MAX_UPLOAD_SIZE:
             return Response(
-                {"detail": f"File too large. Max size is {settings.MAX_UPLOAD_SIZE // (1024*1024)}MB."},
+                {
+                    "detail": f"File too large. Max size is {settings.MAX_UPLOAD_SIZE // (1024 * 1024)}MB."
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
-            
+
         # Validate MIME type
         if file_obj.content_type not in settings.ALLOWED_UPLOAD_TYPES:
             return Response(
-                {"detail": f"File type {file_obj.content_type} not supported for chat attachments."},
+                {
+                    "detail": f"File type {file_obj.content_type} not supported for chat attachments."
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

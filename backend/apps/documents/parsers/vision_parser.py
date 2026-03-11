@@ -39,7 +39,9 @@ class VisionParser(BaseParser):
             response = self.client.models.generate_content(
                 model=self.model,
                 contents=[
-                    types.Part.from_bytes(data=image_data, mime_type="image/jpeg"), # GenAI handles most images
+                    types.Part.from_bytes(
+                        data=image_data, mime_type="image/jpeg"
+                    ),  # GenAI handles most images
                     prompt,
                 ],
             )
@@ -56,7 +58,7 @@ class VisionParser(BaseParser):
             )
         except Exception as e:
             logger.error("vision_parsing_failed", error=str(e), path=file_path)
-            raise ValueError(f"Failed to process image: {str(e)}")
+            raise ValueError(f"Failed to process image: {str(e)}") from e
 
     def supports(self, mime_type: str) -> bool:
         return mime_type.startswith("image/")

@@ -123,8 +123,10 @@ export function VoiceChat({
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
             }
-            setWaveformData(Array(32).fill(0));
-            if (externalVolume === undefined) setInternalVolume(0);
+            requestAnimationFrame(() => {
+                setWaveformData(Array(32).fill(0));
+                if (externalVolume === undefined) setInternalVolume(0);
+            });
         }
 
         return () => {

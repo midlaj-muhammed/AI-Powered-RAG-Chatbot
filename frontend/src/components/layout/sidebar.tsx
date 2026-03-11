@@ -8,54 +8,64 @@ import {
   PanelLeft,
   User,
   Users,
-  History,
-  Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
 import { useChatStore } from '@/stores/chat-store'
 import { Button } from '@/components/ui/button'
-import { authApi } from '@/api/auth'
 import { useQuery } from '@tanstack/react-query'
 import { documentsApi } from '@/api/documents'
-
-const navItems = [
-  { path: '/chat', label: 'Chat', icon: MessageSquare },
-  { path: '/documents', label: 'Documents', icon: FileText },
-  { path: '/history', label: 'History', icon: History },
-  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/admin/users', label: 'Users', icon: Users, adminOnly: true },
-]
+import type { Document as AIDocument } from '@/api/types'
 
 export function Sidebar() {
   const location = useLocation()
-  const { user, refreshToken, logout } = useAuthStore()
+  const { logout } = useAuthStore()
   const { sidebarOpen, toggleSidebar } = useChatStore()
 
-  const handleLogout = async () => {
-    try {
-      if (refreshToken) await authApi.logout(refreshToken)
-    } finally {
-      logout()
-    }
+  const handleLogout = () => {
+    logout()
   }
 
   const { data: docsData } = useQuery({
     queryKey: ['documents', 'sidebar-status'],
     queryFn: () => documentsApi.getDocuments({ page: 1 }),
     refetchInterval: (query) => {
-      const hasProcessing = (query.state.data as any)?.results?.some(
-        (doc: any) => doc.status === 'pending' || doc.status === 'processing'
+      const data = query.state.data as { results?: AIDocument[] }
+      const hasProcessing = data?.results?.some(
+        (doc: AIDocument) => doc.status === 'pending' || doc.status === 'processing'
       )
       return hasProcessing ? 5000 : 60000
     },
     staleTime: 0,
-    enabled: !!user,
   })
 
   const processingCount = docsData?.results?.filter(
-    (d: any) => d.status === 'pending' || d.status === 'processing'
+    (d: AIDocument) => d.status === 'pending' || d.status === 'processing'
   ).length || 0
+
+  const navItems = [
+    {
+      label: 'Dashboard',
+      href: '/dashboard',
+      icon: LayoutDashboard,
+    },
+    {
+      label: 'Chat',
+      href: '/chat',
+      icon: MessageSquare,
+    },
+    {
+      label: 'Documents',
+      href: '/documents',
+      icon: FileText,
+      badge: processingCount > 0 ? processingCount : undefined,
+    },
+    {
+      label: 'Members',
+      href: '/members',
+      icon: Users,
+    },
+  ]
 
   return (
     <aside
@@ -68,99 +78,79 @@ export function Sidebar() {
     >
       {/* Header */}
       <div className="flex h-14 items-center justify-between border-b border-border px-3">
-        {sidebarOpen && (
-          <Link to="/chat" className="flex items-center gap-2" aria-label="RAG Chatbot – go to chat">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <MessageSquare className="h-4 w-4 text-white" aria-hidden="true" />
-            </div>
-            <span className="text-sm font-semibold">RAG Chatbot</span>
+        <Link to="/" className={cn('flex items-center gap-2 font-semibold', !sidebarOpen && 'hidden')}>
+          <MessageSquare className="h-6 w-6 text-primary" />
+          <span>NexusAI</span>
+        </Link>
+        {!sidebarOpen && (
+          <Link to="/" className="mx-auto">
+            <MessageSquare className="h-6 w-6 text-primary" />
           </Link>
         )}
         <Button
           variant="ghost"
           size="icon"
           onClick={toggleSidebar}
-          aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
-          aria-expanded={sidebarOpen}
+          className={cn('h-8 w-8', !sidebarOpen && 'mx-auto')}
         >
-          {sidebarOpen ? (
-            <PanelLeftClose className="h-4 w-4" aria-hidden="true" />
-          ) : (
-            <PanelLeft className="h-4 w-4" aria-hidden="true" />
-          )}
+          {sidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
         </Button>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 p-2" aria-label="Primary">
-        {navItems
-          .filter((item) => !('adminOnly' in item && item.adminOnly) || user?.role === 'admin')
-          .map((item) => {
-            const isActive = location.pathname.startsWith(item.path)
-            const Icon = item.icon
-            const isDocPage = item.path === '/documents'
-
-            return (
+      <nav className="flex-1 overflow-y-auto py-4">
+        <ul className="grid gap-1 px-2">
+          {navItems.map((item) => (
+            <li key={item.href}>
               <Link
-                key={item.path}
-                to={item.path}
-                aria-current={isActive ? 'page' : undefined}
-                aria-label={!sidebarOpen ? item.label : undefined}
+                to={item.href}
                 className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors relative group',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
-                  isActive
-                    ? 'bg-primary/10 text-primary font-medium'
-                    : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground',
+                  location.pathname === item.href ? 'bg-accent text-accent-foreground' : 'text-muted-foreground',
+                  !sidebarOpen && 'justify-center px-2'
                 )}
               >
-                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                {sidebarOpen && <span className="flex-1">{item.label}</span>}
-
-                {/* Processing indicator */}
-                {isDocPage && processingCount > 0 && (
-                  <div className={cn(
-                    "flex items-center justify-center rounded-full bg-primary/20",
-                    sidebarOpen ? "px-1.5 py-0.5" : "absolute top-1 right-1 w-2 h-2"
-                  )}>
-                    {sidebarOpen ? (
-                      <>
-                        <Loader2 className="h-2.5 w-2.5 animate-spin mr-1 text-primary" />
-                        <span className="text-[10px] font-bold text-primary">{processingCount}</span>
-                      </>
-                    ) : (
-                      <div className="w-full h-full rounded-full bg-primary animate-pulse" />
+                <item.icon className="h-5 w-5" />
+                {sidebarOpen && (
+                  <>
+                    <span className="flex-1">{item.label}</span>
+                    {item.badge !== undefined && (
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
+                        {item.badge}
+                      </span>
                     )}
-                  </div>
+                  </>
                 )}
               </Link>
-            )
-          })}
+            </li>
+          ))}
+        </ul>
       </nav>
 
-      {/* User section */}
+      {/* Footer */}
       <div className="border-t border-border p-2">
-        {sidebarOpen && user && (
-          <div className="mb-2 flex items-center gap-2 rounded-lg px-3 py-2" aria-label={`Signed in as ${user.first_name || user.email}, role: ${user.role}`}>
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/20">
-              <User className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-medium">{user.first_name || user.email}</p>
-              <p className="truncate text-xs text-muted-foreground">{user.role}</p>
-            </div>
-          </div>
-        )}
-        <Button
-          variant="ghost"
-          size={sidebarOpen ? 'default' : 'icon'}
-          className={cn('w-full text-muted-foreground hover:text-destructive', !sidebarOpen && 'justify-center')}
-          onClick={handleLogout}
-          aria-label="Log out"
-        >
-          <LogOut className="h-4 w-4" aria-hidden="true" />
-          {sidebarOpen && <span>Logout</span>}
-        </Button>
+        <div className="grid gap-1">
+          <Link
+            to="/profile"
+            className={cn(
+              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground',
+              !sidebarOpen && 'justify-center px-2'
+            )}
+          >
+            <User className="h-5 w-5" />
+            {sidebarOpen && <span>Profile</span>}
+          </Link>
+          <button
+            onClick={handleLogout}
+            className={cn(
+              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground',
+              !sidebarOpen && 'justify-center px-2'
+            )}
+          >
+            <LogOut className="h-5 w-5" />
+            {sidebarOpen && <span>Logout</span>}
+          </button>
+        </div>
       </div>
     </aside>
   )

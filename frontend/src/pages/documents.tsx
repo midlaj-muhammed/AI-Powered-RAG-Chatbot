@@ -75,11 +75,11 @@ export function DocumentsPage() {
         collection: collectionFilter || undefined,
       }),
     refetchInterval: (query) => {
-      const data = query.state.data as any
+      const data = query.state.data as { results?: RAGDocument[] }
       const hasProcessing = data?.results?.some(
-        (doc: any) => doc.status === 'pending' || doc.status === 'processing'
+        (doc) => doc.status === 'pending' || doc.status === 'processing'
       )
-      return hasProcessing ? 2000 : 30000 // Poll every 2s if processing, else 30s
+      return hasProcessing ? 2000 : 30000
     },
     staleTime: 0,
   })
@@ -260,7 +260,7 @@ export function DocumentsPage() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-lg font-semibold">Documents</h1>
-                {docsData?.results?.some((d: any) => d.status === 'pending' || d.status === 'processing') && (
+                {docsData?.results?.some((d: RAGDocument) => d.status === 'pending' || d.status === 'processing') && (
                   <Badge variant="default" className="gap-1.5 h-6 animate-pulse bg-primary/10 text-primary border-primary/20 hover:bg-primary/20">
                     <Loader2 className="h-3 w-3 animate-spin" />
                     <span className="text-[10px] font-medium">Processing...</span>

@@ -1,12 +1,10 @@
 import { useState, useCallback, useRef } from 'react'
-import { AlertCircle, Paperclip, X, Image as ImageIcon, FileText, Film, Music } from 'lucide-react'
+import { AlertCircle, Paperclip, X, Image as ImageIcon, FileText, Film, Music, Mic, MicOff, Wand2, X as CloseIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ChatInput as UIChatInput, ChatInputTextArea, ChatInputSubmit } from '@/components/ui/chat-input'
 import { chatApi } from '@/api/chat'
 import { toastError } from '@/components/ui/toast-lib'
 import { useSpeechRecognition } from '@/hooks/use-speech-recognition'
-import { Mic, MicOff, Wand2, X as CloseIcon } from 'lucide-react'
-import { useEffect } from 'react'
 import { VoiceChat } from '@/components/ui/ia-siri-chat'
 import { AnimatePresence, motion } from 'framer-motion'
 
@@ -37,14 +35,8 @@ export function ChatInput({ onSend, onError, onCancel, disabled, isStreaming }: 
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const { isListening, transcript, startListening, stopListening } = useSpeechRecognition()
 
-  // Update message as user speaks
-  useEffect(() => {
-    if (isListening && transcript) {
-      setMessage(transcript)
-    }
-  }, [transcript, isListening])
+  const { isListening, startListening, stopListening } = useSpeechRecognition(setMessage)
 
   const validateMessage = useCallback((text: string): string | null => {
     const trimmed = text.trim()
@@ -85,7 +77,7 @@ export function ChatInput({ onSend, onError, onCancel, disabled, isStreaming }: 
           ...result,
           previewUrl
         })
-      } catch (error) {
+      } catch {
         toastError(`Failed to upload ${file.name}`)
       }
     }

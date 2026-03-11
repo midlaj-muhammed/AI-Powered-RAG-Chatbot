@@ -1,20 +1,20 @@
 import json
 import time
 from collections.abc import Generator
+from typing import Any, Optional
 
 import structlog
 from django.conf import settings
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from apps.chat.models import ChatSession, Message, MessageRole
+from apps.rag.embeddings import get_embeddings
 from apps.rag.llm import get_llm
 from apps.rag.prompts import (
-    NO_CONTEXT_RESPONSE,
     RAG_SYSTEM_PROMPT,
     RAG_USER_PROMPT,
     TITLE_GENERATION_PROMPT,
 )
-from apps.rag.query import build_hybrid_query, rewrite_query
 from apps.rag.vectorstore import similarity_search
 
 logger = structlog.get_logger(__name__)
@@ -104,7 +104,7 @@ def stream_chat_response(
     session: ChatSession,
     user_message: str,
     collection: str = "default",
-    attachment_ids: list[str] = None,
+    attachment_ids: Optional[list[str]] = None,
 ) -> Generator[str, None, None]:
     """
     Stream an AI response for a user message, supporting multimodal attachments.
@@ -119,8 +119,9 @@ def stream_chat_response(
             role=MessageRole.USER,
             content=user_message,
         )
-        
+
         from apps.chat.models import MessageAttachment
+
         attachments = MessageAttachment.objects.filter(id__in=attachment_ids)
         attachments.update(message=msg)
 
@@ -131,7 +132,7 @@ def stream_chat_response(
         # 2. Build multimodal query if there are images
         search_query = user_message
         image_attachments = [a for a in attachments if a.mime_type.startswith("image/")]
-        
+
         # 3. Retrieve relevant context
         filter_dict = None
         if collection and collection != "default":
@@ -141,8 +142,10 @@ def stream_chat_response(
         if image_attachments and hasattr(get_embeddings(), "embed_content"):
             # This is a bit complex for standard langchain Chroma
             # For now, we still search with text but we could extend this
-            logger.info("multimodal_search_requested", images_count=len(image_attachments))
-            
+            logger.info(
+                "multimodal_search_requested", images_count=len(image_attachments)
+            )
+
         search_results = similarity_search(
             query=search_query,
             k=int(settings.RAG_CONFIG["top_k"]),
@@ -157,15 +160,21 @@ def stream_chat_response(
             context=context if context else "No relevant documents found.",
             chat_history=_build_chat_history(session),
         )
-        
+
         # Construct multimodal content
-        user_content = [{"type": "text", "text": RAG_USER_PROMPT.format(question=user_message)}]
+        user_content: list[Any] = [
+            {"type": "text", "text": RAG_USER_PROMPT.format(question=user_message)}
+        ]
         for attachment in attachments:
             if attachment.mime_type.startswith("image/"):
-                user_content.append({
-                    "type": "image_url",
-                    "image_url": {"url": f"data:{attachment.mime_type};base64,{_get_base64_file(attachment.file)}"}
-                })
+                user_content.append(
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:{attachment.mime_type};base64,{_get_base64_file(attachment.file)}"
+                        },
+                    }
+                )
             # Add other types if supported by the LLM wrapper
 
         messages = [
@@ -209,9 +218,11 @@ def stream_chat_response(
         logger.error("chat_response_error", error=str(e), session_id=str(session.id))
         yield f"data: {json.dumps({'type': 'error', 'detail': str(e)})}\n\n"
 
+
 def _get_base64_file(file_field) -> str:
     """Read a file field and return its base64 encoding."""
     import base64
+
     with file_field.open("rb") as f:
         return base64.b64encode(f.read()).decode("utf-8")
 

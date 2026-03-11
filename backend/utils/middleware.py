@@ -14,7 +14,7 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
     """Add security headers to all responses."""
 
     # Rate limiting for suspicious activity (in-memory fallback)
-    sus_activity_counts = defaultdict(int)
+    sus_activity_counts: dict[str, int] = defaultdict(int)
     sus_activity_reset = 0
 
     def process_response(self, request, response):
