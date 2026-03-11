@@ -1,7 +1,7 @@
 import json
 import time
 from collections.abc import Generator
-from typing import Any, Optional
+from typing import Any
 
 import structlog
 from django.conf import settings
@@ -104,7 +104,7 @@ def stream_chat_response(
     session: ChatSession,
     user_message: str,
     collection: str = "default",
-    attachment_ids: Optional[list[str]] = None,
+    attachment_ids: list[str] | None = None,
 ) -> Generator[str, None, None]:
     """
     Stream an AI response for a user message, supporting multimodal attachments.
