@@ -4,7 +4,7 @@ import json
 from typing import cast
 
 import structlog
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Subquery, OuterRef, Prefetch
 from django.http import HttpResponse, StreamingHttpResponse
 from rest_framework import generics, status
 from rest_framework.response import Response
@@ -25,8 +25,11 @@ from apps.chat.serializers import (
     SavedSearchSerializer,
     SendMessageSerializer,
 )
-from apps.rag.pipeline import stream_chat_response
-from apps.users.models import User
+from apps.rag.services.rag_chain import stream_chat_response
+from apps.rag.services.gemini_client import get_llm
+from apps.rag.prompts import SUGGESTION_GENERATION_PROMPT
+from apps.documents.models import Document
+from apps.users.models import User, UserRole
 
 logger = structlog.get_logger(__name__)
 
@@ -38,10 +41,20 @@ class ChatSessionListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = cast(User, self.request.user)
+        if user.role == UserRole.ADMIN:
+            queryset = ChatSession.objects.filter(is_archived=False)
+        else:
+            queryset = ChatSession.objects.filter(user=user, is_archived=False)
+            
+        last_message = Message.objects.filter(session=OuterRef("pk")).order_by("-created_at")
+        
         return (
-            ChatSession.objects.filter(user=user, is_archived=False)
-            .annotate(message_count=Count("messages"))
-            .prefetch_related("messages")
+            queryset.annotate(
+                message_count=Count("messages"),
+                last_msg_role=Subquery(last_message.values("role")[:1]),
+                last_msg_content=Subquery(last_message.values("content")[:1]),
+                last_msg_created_at=Subquery(last_message.values("created_at")[:1]),
+            )
             .order_by("-updated_at")
         )
 
@@ -56,6 +69,8 @@ class ChatSessionDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         user = cast(User, self.request.user)
+        if user.role == UserRole.ADMIN:
+            return ChatSession.objects.all()
         return ChatSession.objects.filter(user=user)
 
     def perform_destroy(self, instance):
@@ -207,11 +222,24 @@ class QueryHistoryView(generics.ListAPIView):
 
     def get_queryset(self):
         user = cast(User, self.request.user)
-        qs = Message.objects.filter(
-            role=MessageRole.USER,
-            session__user=user,
-            session__is_archived=False,
-        ).select_related("session")
+        # Prefetch assistant messages to avoid N+1 in ai_response
+        ai_responses_prefetch = Prefetch(
+            "session__messages",
+            queryset=Message.objects.filter(role=MessageRole.ASSISTANT),
+            to_attr="prefetched_ai_messages"
+        )
+
+        if user.role == UserRole.ADMIN:
+            qs = Message.objects.filter(
+                role=MessageRole.USER,
+                session__is_archived=False,
+            ).select_related("session", "session__user").prefetch_related(ai_responses_prefetch)
+        else:
+            qs = Message.objects.filter(
+                role=MessageRole.USER,
+                session__user=user,
+                session__is_archived=False,
+            ).select_related("session").prefetch_related(ai_responses_prefetch)
 
         # Search in content
         search = self.request.query_params.get("search")
@@ -288,7 +316,10 @@ class ExportChatView(APIView):
         fmt = request.query_params.get("format", "json")
 
         try:
-            session = ChatSession.objects.get(id=session_id, user=request.user)
+            if request.user.role == UserRole.ADMIN:
+                session = ChatSession.objects.get(id=session_id)
+            else:
+                session = ChatSession.objects.get(id=session_id, user=request.user)
         except ChatSession.DoesNotExist:
             return Response(
                 {"detail": "Chat session not found."},
@@ -353,8 +384,12 @@ class ExportDocumentsView(APIView):
 
     def get(self, request):
         from apps.documents.models import Document
+        user = cast(User, request.user)
 
-        qs = Document.objects.filter(is_deleted=False).select_related("collection")
+        if user.role == UserRole.ADMIN:
+            qs = Document.objects.filter(is_deleted=False).select_related("collection", "uploaded_by")
+        else:
+            qs = Document.objects.filter(uploaded_by=user, is_deleted=False).select_related("collection", "uploaded_by")
 
         buf = io.StringIO()
         writer = csv.writer(buf)
@@ -389,3 +424,67 @@ class ExportDocumentsView(APIView):
         response = HttpResponse(buf.getvalue(), content_type="text/csv")
         response["Content-Disposition"] = 'attachment; filename="documents_export.csv"'
         return response
+
+
+class GetSuggestionsView(APIView):
+    """Generate dynamic suggestions based on chat history and documents."""
+
+    def get(self, request):
+        user = cast(User, request.user)
+
+        # 1. Get recent chat history (last 5 user messages)
+        recent_messages = (
+            Message.objects.filter(session__user=user, role=MessageRole.USER)
+            .order_by("-created_at")[:5]
+            .values_list("content", flat=True)
+        )
+        history_text = "\n".join(recent_messages) if recent_messages else "No prior history."
+
+        # 2. Get recent documents (last 5 uploaded)
+        recent_docs = (
+            Document.objects.filter(uploaded_by=user, is_deleted=False)
+            .order_by("-created_at")[:5]
+            .values_list("original_name", flat=True)
+        )
+        docs_text = ", ".join(recent_docs) if recent_docs else "No documents uploaded yet."
+
+        # 3. Call LLM to generate suggestions
+        try:
+            llm = get_llm(streaming=False)
+            prompt = SUGGESTION_GENERATION_PROMPT.format(
+                history=history_text, document_titles=docs_text
+            )
+            
+            response = llm.invoke(prompt)
+            content = response.content if hasattr(response, "content") else str(response)
+            
+            # Clean response - sometimes LLMs add markdown blocks
+            content = content.strip()
+            if content.startswith("```json"):
+                content = content[7:]
+            if content.endswith("```"):
+                content = content[:-3]
+            content = content.strip()
+
+            try:
+                suggestions = json.loads(content)
+            except json.JSONDecodeError:
+                # Fallback if LLM failed to return valid JSON
+                suggestions = [
+                    "What can you tell me about the uploaded files?",
+                    "Summarize my recent documents.",
+                    "Help me find specific information.",
+                    "What are the key themes in my documents?"
+                ]
+
+            return Response(suggestions)
+
+        except Exception as e:
+            logger.error("suggestion_generation_failed", error=str(e))
+            # Safe fallback
+            return Response([
+                "How can I help you today?",
+                "Tell me about the documents I uploaded.",
+                "Summarize the latest report.",
+                "What are the main topics in our history?"
+            ])

@@ -82,6 +82,7 @@ class ChatSessionListSerializer(serializers.ModelSerializer):
 
     message_count = serializers.IntegerField(read_only=True)
     last_message = serializers.SerializerMethodField()
+    user_email = serializers.EmailField(source="user.email", read_only=True)
 
     class Meta:
         model = ChatSession
@@ -91,12 +92,22 @@ class ChatSessionListSerializer(serializers.ModelSerializer):
             "is_archived",
             "message_count",
             "last_message",
+            "user_email",
             "created_at",
             "updated_at",
         )
         read_only_fields = ("id", "title", "created_at", "updated_at")
 
     def get_last_message(self, obj):
+        # Use annotated fields if available (optimized)
+        if hasattr(obj, "last_msg_role") and obj.last_msg_role:
+            return {
+                "role": obj.last_msg_role,
+                "content": obj.last_msg_content[:100] if obj.last_msg_content else "",
+                "created_at": obj.last_msg_created_at,
+            }
+        
+        # Fallback to N+1 query (less efficient)
         last = obj.messages.last()
         if last:
             return {
@@ -184,6 +195,7 @@ class QueryHistorySerializer(serializers.ModelSerializer):
 
     ai_response = serializers.SerializerMethodField()
     session_title = serializers.CharField(source="session.title", read_only=True)
+    user_email = serializers.EmailField(source="session.user.email", read_only=True)
 
     class Meta:
         model = Message
@@ -192,21 +204,37 @@ class QueryHistorySerializer(serializers.ModelSerializer):
             "content",
             "session",
             "session_title",
+            "user_email",
             "ai_response",
             "created_at",
         )
 
     def get_ai_response(self, obj):
         """Get the immediately following assistant response."""
-        ai_msg = (
-            Message.objects.filter(
-                session=obj.session,
-                role="assistant",
-                created_at__gt=obj.created_at,
+        # Use prefetched messages if available (optimized)
+        ai_msg = None
+        if hasattr(obj.session, "prefetched_ai_messages"):
+            # Find the first assistant message created after this user message
+            responses = [
+                m for m in obj.session.prefetched_ai_messages 
+                if m.created_at > obj.created_at
+            ]
+            if responses:
+                # Assuming chronological order in prefetched list
+                ai_msg = min(responses, key=lambda x: x.created_at)
+        
+        if not ai_msg:
+            # Fallback to N+1 query
+            ai_msg = (
+                Message.objects.filter(
+                    session=obj.session,
+                    role="assistant",
+                    created_at__gt=obj.created_at,
+                )
+                .order_by("created_at")
+                .first()
             )
-            .order_by("created_at")
-            .first()
-        )
+            
         if ai_msg:
             return {
                 "id": str(ai_msg.id),

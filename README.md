@@ -15,7 +15,8 @@ An enterprise-grade Retrieval-Augmented Generation (RAG) chatbot for company dat
 - **🚀 RAG Chat** — Ask questions about your documents with AI-powered answers, streamed via SSE.
 - **🖼️ Multimodal Support** — Upload images and documents as context; Gemini Vision understands diagrams, tables, and screenshots.
 - **📂 Document Management** — Upload PDF, DOCX, CSV/XLSX, TXT, and Markdown files with automatic chunking and embedding.
-- **🔍 Hybrid & Semantic Search** — Uses `gemini-embedding-2-preview` for unified multimodal vector search across text and images.
+- **🧠 Agentic Semantic Search** — Multi-step ReAct agents intelligently rewrite queries and self-correct using **3072-dimensional vectors**.
+- **🕵️ Agentic Reasoning** — User queries are analyzed by a ReAct loop (Think/Action/Observe) to ensure grounding and accuracy.
 - **🏷️ Collections & Tags** — Organize documents into collections; scope queries to specific collections.
 - **📜 Query History** — Search, filter, and export past queries.
 - **🔖 Saved Searches** — Bookmark frequently used queries for one-click re-use.
@@ -32,7 +33,7 @@ An enterprise-grade Retrieval-Augmented Generation (RAG) chatbot for company dat
 | **Frontend** | React 19, TypeScript 5, Vite 7, Tailwind CSS 4 |
 | **AI/ML** | Google Gemini 2.5 Flash, **Gemini Embedding 2.0 (Multimodal)** |
 | **RAG Framework** | LangChain 0.3+ |
-| **Vector Store** | ChromaDB (Auto-expanding) |
+| **Vector Store** | Qdrant (Distributed & Scalable) |
 | **Database** | PostgreSQL 15 |
 | **Cache / Queue** | Redis 7, Django-Q2 |
 | **Auth** | SimpleJWT (access 15 min / refresh 7 days) |
@@ -63,7 +64,7 @@ graph TD
 
     subgraph Storage
         Postgres[(PostgreSQL 15)]
-        Chroma[(ChromaDB)]
+        Qdrant[(Qdrant)]
         Redis[(Redis Cache + Q2)]
     end
 
@@ -74,7 +75,7 @@ graph TD
     DRF --> An
     Chat --> Storage
     Docs --> Storage
-    RAG --> Chroma
+    RAG --> Qdrant
     RAG --> AI(Google Gemini)
 ```
 
@@ -127,8 +128,6 @@ docker compose exec backend python manage.py createsuperuser
 | **Frontend** | [http://localhost:5173](http://localhost:5173) |
 | **Backend API** | [http://localhost:8000/api/](http://localhost:8000/api/) |
 | **Swagger Docs** | [http://localhost:8000/api/docs/](http://localhost:8000/api/docs/) |
-| **Health Check** | [http://localhost:8000/api/health/](http://localhost:8000/api/health/) |
-
 ## 📁 Project Structure
 
 ```text
@@ -138,7 +137,7 @@ docker compose exec backend python manage.py createsuperuser
 │   │   ├── analytics/   # Dashboard & usage analytics
 │   │   ├── chat/        # Sessions, messages, history, export
 │   │   ├── documents/   # Upload, process, collections, tags
-│   │   ├── rag/         # LangChain pipeline, embeddings, prompts
+│   │   ├── rag/         # LangChain pipeline, Qdrant integration, agents
 │   │   └── users/       # Auth, roles, admin user management
 │   ├── config/          # Django settings & URL conf
 │   ├── utils/           # Shared utilities, middleware, exceptions
@@ -155,6 +154,13 @@ docker compose exec backend python manage.py createsuperuser
 ├── Makefile
 └── prd.md
 ```
+
+## 🧠 Core RAG Pipeline
+
+1. **Multimodal Ingestion**: Media (Images/Video) are parsed into semantic fragments using Gemini 1.5.
+2. **Dense Indexing**: Content is embedded into **3072-dimensional vectors** using `gemini-embedding-2-preview`.
+3. **Qdrant Storage**: Vectors are indexed in a high-speed, distributed Qdrant collection with namespace-based isolation.
+4. **Agentic Retrieval**: User queries are analyzed by a **ReAct loop** that rewrites queries and self-evaluates observations to ensure perfectly grounded answers.
 
 ## 👁️ Vision & Multimodal RAG
 
@@ -186,7 +192,7 @@ DEFAULT_THROTTLE_RATES = {
 # RAG tuning
 RAG_CONFIG = {
     "top_k": 5,
-    "similarity_threshold": 0.3,
+    "similarity_threshold": 0.4,
     "chunk_size": 800,
     "chunk_overlap": 200,
     "temperature": 0.3,

@@ -18,7 +18,7 @@ import type {
 } from '@/api/types'
 
 export function DashboardPage() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['dashboard'],
     queryFn: async (): Promise<DashboardOverview> => {
       const { data } = await api.get('/admin-panel/dashboard/')
@@ -49,6 +49,21 @@ export function DashboardPage() {
 
   if (isLoading) {
     return <PageLoader title="Fetching Analytics..." subtitle="Gathering latest system insights" />
+  }
+
+  if (error && (error as any).response?.status === 403) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center p-6 text-center">
+        <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-destructive/10 text-destructive mb-6">
+          <Zap className="h-10 w-10" />
+        </div>
+        <h2 className="text-xl font-semibold mb-2">Dashboard Restricted</h2>
+        <p className="max-w-xs text-sm text-muted-foreground leading-relaxed">
+          The Analytics Dashboard is reserved for Administrative personnel.
+          Please use the Chat or Documents sections for standard tasks.
+        </p>
+      </div>
+    )
   }
 
   if (!data) return null
@@ -365,11 +380,10 @@ function MiniBarChart({
   colorClass?: string
 }) {
   const maxVal = Math.max(...data.map((d) => d.total), 1)
-  const visible = data.slice(-14)
 
   return (
     <div className="flex items-end gap-[3px] h-24">
-      {visible.map((d) => {
+      {data.map((d) => {
         const height = (d.total / maxVal) * 100
         return (
           <div

@@ -1,6 +1,7 @@
 """Async document processing tasks for Django-Q2."""
 
 import structlog
+import uuid
 from django.conf import settings
 from django.utils import timezone
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -8,7 +9,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from apps.documents.metadata import extract_metadata
 from apps.documents.models import Document, DocumentChunk, DocumentStatus
 from apps.documents.parsers.registry import parse_document
-from apps.rag.vectorstore import add_documents, delete_by_document_id
+from apps.rag.services.vector_store import add_documents, delete_by_document_id
 
 logger = structlog.get_logger(__name__)
 
@@ -102,11 +103,16 @@ def process_document(document_id: str) -> None:
             if not chunk_text or not chunk_text.strip():
                 continue
 
-            chunk_id = f"{document_id}_chunk_{valid_chunk_index}"
+            # Qdrant requires IDs to be UUIDs or integers. 
+            # We create a deterministic UUID based on the string ID.
+            namespace = uuid.UUID('6ba7b810-9dad-11d1-80b4-00c04fd430c8') # DNS namespace as default
+            chunk_id_str = f"{document_id}_chunk_{valid_chunk_index}"
+            chunk_id = str(uuid.uuid5(namespace, chunk_id_str))
             texts.append(chunk_text.strip())
             metadatas.append(
                 {
                     "document_id": document_id,
+                    "user_id": str(document.uploaded_by_id),
                     "document_name": document.original_name,
                     "filename": document.original_name,
                     "chunk_index": valid_chunk_index,

@@ -7,6 +7,7 @@ from apps.users.views import (
     PasswordChangeView,
     ProfileView,
     RegisterView,
+    GoogleLoginView,
 )
 
 urlpatterns = [
@@ -16,4 +17,5 @@ urlpatterns = [
     path("token/refresh/", TokenRefreshView.as_view(), name="auth-token-refresh"),
     path("me/", ProfileView.as_view(), name="auth-profile"),
     path("password/change/", PasswordChangeView.as_view(), name="auth-password-change"),
+    path('google-login/', GoogleLoginView.as_view(), name='google_login'),
 ]

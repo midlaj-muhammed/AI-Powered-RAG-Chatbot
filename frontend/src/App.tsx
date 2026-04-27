@@ -15,6 +15,7 @@ const DocumentsPage = lazy(() => import('@/pages/documents').then(m => ({ defaul
 const DashboardPage = lazy(() => import('@/pages/dashboard').then(m => ({ default: m.DashboardPage })))
 const AdminUsersPage = lazy(() => import('@/pages/admin-users').then(m => ({ default: m.AdminUsersPage })))
 const HistoryPage = lazy(() => import('@/pages/history').then(m => ({ default: m.HistoryPage })))
+const ProfilePage = lazy(() => import('@/pages/profile').then(m => ({ default: m.ProfilePage })))
 const LandingPage = lazy(() => import('@/pages/landing').then(m => ({ default: m.LandingPage })))
 
 const queryClient = new QueryClient({
@@ -53,6 +54,7 @@ export default function App() {
                   <Route path="/documents" element={<DocumentsPage />} />
                   <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/history" element={<HistoryPage />} />
+                  <Route path="/profile" element={<ProfilePage />} />
                   <Route path="/admin/users" element={<AdminUsersPage />} />
                 </Route>
               </Route>

@@ -52,11 +52,21 @@ function ChatInput({
         <ChatInputContext.Provider value={contextValue}>
             <div
                 className={cn(
+                    "cursor-text",
                     variant === "default" &&
-                    "flex flex-col items-end w-full p-2 rounded-2xl border border-input bg-transparent focus-within:ring-1 focus-within:ring-ring focus-within:outline-none",
+                    "flex flex-col items-stretch w-full p-2 rounded-2xl border border-input bg-transparent focus-within:ring-1 focus-within:ring-ring focus-within:outline-none",
                     variant === "unstyled" && "flex items-start gap-2 w-full",
                     className,
                 )}
+                onClick={(e) => {
+                    const target = e.target as HTMLElement;
+                    const isButtonClick = target.tagName === 'BUTTON' || target.closest('button');
+                    const isTextareaClick = target.tagName === 'TEXTAREA';
+
+                    if (!isButtonClick && !isTextareaClick) {
+                        e.currentTarget.querySelector("textarea")?.focus();
+                    }
+                }}
             >
                 {children}
             </div>

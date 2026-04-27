@@ -34,6 +34,7 @@ export interface ChatSession {
   title: string | null
   is_archived: boolean
   message_count: number
+  user_email: string
   last_message: { role: string; content: string; created_at: string } | null
   created_at: string
   updated_at: string
@@ -136,7 +137,17 @@ export interface SSEErrorEvent {
   detail: string  // backend sends 'detail', not 'message'
 }
 
-export type SSEEvent = SSESourcesEvent | SSETokenEvent | SSEDoneEvent | SSEErrorEvent
+export interface SSEThoughtEvent {
+  type: 'thought'
+  content: string
+}
+
+export interface SSEStatusEvent {
+  type: 'status'
+  content: string
+}
+
+export type SSEEvent = SSESourcesEvent | SSETokenEvent | SSEDoneEvent | SSEErrorEvent | SSEThoughtEvent | SSEStatusEvent
 
 // Analytics types
 export interface DashboardOverview {
@@ -199,7 +210,7 @@ export interface TopDocumentsResponse {
 // Admin types
 export interface AdminUser extends User {
   is_active: boolean
-  date_joined: string
+  created_at: string
   last_login: string | null
   document_count: number
   session_count: number
@@ -219,6 +230,7 @@ export interface QueryHistoryItem {
   content: string
   session: string
   session_title: string
+  user_email: string
   ai_response: {
     id: string
     content_preview: string

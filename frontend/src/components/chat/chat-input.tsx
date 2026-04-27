@@ -217,7 +217,7 @@ export function ChatInput({ onSend, onError, onCancel, disabled, isStreaming }: 
             maxLength={MESSAGE_CONSTRAINTS.MAX_LENGTH}
             disabled={disabled || isStreaming || isUploading}
           />
-          <div className="flex items-center gap-1">
+          <div className="flex items-center justify-end gap-1 w-full">
             {message.length > 200 && !isStreaming && (
               <button
                 type="button"

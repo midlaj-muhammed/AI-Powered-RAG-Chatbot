@@ -7,6 +7,7 @@ interface ChatState {
   messages: Message[]
   isStreaming: boolean
   streamingContent: string
+  streamingThought: string
   streamingSources: MessageSource[]
   sidebarOpen: boolean
 
@@ -18,11 +19,13 @@ interface ChatState {
   addMessage: (message: Message) => void
   setStreaming: (isStreaming: boolean) => void
   appendStreamContent: (token: string) => void
+  appendStreamThought: (token: string) => void
   setStreamingSources: (sources: MessageSource[]) => void
   clearStream: () => void
   toggleSidebar: () => void
   setSidebarOpen: (open: boolean) => void
   updateSessionTitle: (id: string, title: string) => void
+  reset: () => void
 }
 
 export const useChatStore = create<ChatState>()((set) => ({
@@ -31,6 +34,7 @@ export const useChatStore = create<ChatState>()((set) => ({
   messages: [],
   isStreaming: false,
   streamingContent: '',
+  streamingThought: '',
   streamingSources: [],
   sidebarOpen: true,
 
@@ -49,8 +53,10 @@ export const useChatStore = create<ChatState>()((set) => ({
   setStreaming: (isStreaming) => set({ isStreaming }),
   appendStreamContent: (token) =>
     set((state) => ({ streamingContent: state.streamingContent + token })),
+  appendStreamThought: (token) =>
+    set((state) => ({ streamingThought: state.streamingThought + token })),
   setStreamingSources: (sources) => set({ streamingSources: sources }),
-  clearStream: () => set({ streamingContent: '', streamingSources: [], isStreaming: false }),
+  clearStream: () => set({ streamingContent: '', streamingThought: '', streamingSources: [], isStreaming: false }),
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   updateSessionTitle: (id, title) =>
@@ -59,4 +65,15 @@ export const useChatStore = create<ChatState>()((set) => ({
         s.id === id ? { ...s, title } : s
       ),
     })),
+  reset: () =>
+    set({
+      sessions: [],
+      activeSessionId: null,
+      messages: [],
+      isStreaming: false,
+      streamingContent: '',
+      streamingThought: '',
+      streamingSources: [],
+      sidebarOpen: true,
+    }),
 }))

@@ -2,15 +2,17 @@
 Embedding provider factory.
 
 Supports multiple embedding providers:
-- gemini: Google text-embedding-004 via direct API (default, free tier)
+- gemini: Google gemini-embedding-2-preview via direct API (default, free tier)
 - openai: OpenAI / OpenAI-compatible embeddings
 - mock: Deterministic hash-based mock embeddings for offline testing
 """
 
 from typing import Any
 
+import time
 import structlog
 from django.conf import settings
+from langchain_core.embeddings import Embeddings
 
 logger = structlog.get_logger(__name__)
 
@@ -47,12 +49,17 @@ def get_embeddings():
             provider = "mock"
 
     if provider == "gemini":
+        from langchain_google_genai import GoogleGenerativeAIEmbeddings
         # Use EMBEDDING_API_KEY first, then fall back to GOOGLE_API_KEY
         key = api_key or getattr(settings, "GOOGLE_API_KEY", "")
-        _embeddings_instance = GeminiEmbeddings(model=model, api_key=key)
+        _embeddings_instance = GoogleGenerativeAIEmbeddings(model=model, google_api_key=key)
     elif provider == "openai":
         key = api_key or getattr(settings, "OPENAI_API_KEY", "")
         _embeddings_instance = _create_openai_embeddings(model, key)
+    elif provider == "openrouter":
+        key = api_key or getattr(settings, "OPENROUTER_API_KEY", "")
+        model = model or getattr(settings, "OPENROUTER_EMBEDDING_MODEL", "google/gemini-embedding-2-preview")
+        _embeddings_instance = _create_openrouter_embeddings(model, key)
     else:
         logger.warning(
             "embeddings_using_mock",
@@ -69,7 +76,7 @@ def get_embeddings():
     return _embeddings_instance
 
 
-class GeminiEmbeddings:
+class GeminiEmbeddings(Embeddings):
     """
     Google Gemini embeddings using the google-genai library.
 
@@ -116,25 +123,68 @@ class GeminiEmbeddings:
             else:
                 contents.append(part)
 
-        result = client.models.embed_content(
-            model=self.model, contents=contents, config=config
-        )
+                result = client.models.embed_content(
+                    model=self.model, contents=contents, config=config
+                )
 
-        return result.embeddings[0].values
+                return result.embeddings[0].values
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        """Embed multiple document texts."""
+        """Embed multiple document texts, chunked into batches of 100."""
         client = self._get_client()
         from google.genai import types
 
         config = types.EmbedContentConfig(task_type="RETRIEVAL_DOCUMENT")
+        
+        all_embeddings: list[list[float]] = []
+        batch_size = 90
+        
+        logger.info("gemini_embedding_batch_start", total_texts=len(texts), batch_size=batch_size)
+        for i in range(0, len(texts), batch_size):
+            batch = texts[i : i + batch_size]
+            
+            # Exponential backoff retry logic for 429s
+            max_retries = 8 # More retries for very large files
+            for attempt in range(max_retries):
+                try:
+                    result = client.models.embed_content(
+                        model=self.model, contents=batch, config=config
+                    )
+                    all_embeddings.extend([e.values for e in result.embeddings])
+                    
+                    # Delay to stay well under free tier RPM
+                    # 50 chunks every 2.5 seconds = 1200 chunks per minute
+                    # text-embedding-004 has 1500 RPM limit.
+                    if i + batch_size < len(texts):
+                        time.sleep(2.5) 
+                    break
+                except Exception as e:
+                    error_str = str(e)
+                    # Catch rate limit errors (often 429 or containing "quota" or "exhausted")
+                    is_rate_limit = any(x in error_str.lower() for x in ["429", "quota", "exhausted", "resource_exhausted"])
+                    
+                    if is_rate_limit:
+                        if attempt == max_retries - 1:
+                            fallback_provider = getattr(settings, "EMBEDDING_FALLBACK_PROVIDER", "")
+                            if fallback_provider == "openrouter":
+                                logger.warning("gemini_embedding_exhausted_switching_to_openrouter", model=self.model)
+                                fallback_model = getattr(settings, "OPENROUTER_EMBEDDING_MODEL", self.model)
+                                api_key = getattr(settings, "OPENROUTER_API_KEY", self.api_key)
+                                fallback_embeddings = _create_openrouter_embeddings(fallback_model, api_key)
+                                return fallback_embeddings.embed_documents(batch)
+                            
+                            logger.error("gemini_embedding_final_failure", error=error_str)
+                            raise
+                        
+                        # Wait exponentially: 10, 20, 40, 60, 60, 60... seconds
+                        wait = min((2 ** attempt) * 10, 60)
+                        logger.warning("gemini_embedding_rate_limited", attempt=attempt+1, wait=wait, model=self.model)
+                        time.sleep(wait)
+                    else:
+                        logger.error("gemini_embedding_unexpected_error", error=error_str)
+                        raise
 
-        # Batch call
-        result = client.models.embed_content(
-            model=self.model, contents=texts, config=config
-        )
-
-        return [e.values for e in result.embeddings]
+        return all_embeddings
 
     def embed_query(self, text: str) -> list[float]:
         """Embed a single query."""
@@ -143,11 +193,20 @@ class GeminiEmbeddings:
 
         config = types.EmbedContentConfig(task_type="RETRIEVAL_QUERY")
 
-        result = client.models.embed_content(
-            model=self.model, contents=text, config=config
-        )
-
-        return result.embeddings[0].values
+        try:
+            result = client.models.embed_content(
+                model=self.model, contents=text, config=config
+            )
+            return result.embeddings[0].values
+        except Exception as e:
+            fallback_provider = getattr(settings, "EMBEDDING_FALLBACK_PROVIDER", "")
+            if fallback_provider == "openrouter":
+                logger.warning("gemini_embedding_query_failed_switching_to_openrouter", error=str(e))
+                fallback_model = getattr(settings, "OPENROUTER_EMBEDDING_MODEL", self.model)
+                api_key = getattr(settings, "OPENROUTER_API_KEY", self.api_key)
+                fallback_embeddings = _create_openrouter_embeddings(fallback_model, api_key)
+                return fallback_embeddings.embed_query(text)
+            raise
 
 
 def _create_openai_embeddings(model: str, api_key: str):
@@ -162,7 +221,18 @@ def _create_openai_embeddings(model: str, api_key: str):
     )
 
 
-class DeterministicMockEmbeddings:
+def _create_openrouter_embeddings(model: str, api_key: str):
+    """Create OpenRouter-compatible embedding instance."""
+    from langchain_openai import OpenAIEmbeddings
+
+    return OpenAIEmbeddings(
+        model=model or "google/gemini-embedding-2-preview",
+        api_key=api_key,  # type: ignore
+        base_url="https://openrouter.ai/api/v1",
+    )
+
+
+class DeterministicMockEmbeddings(Embeddings):
     """
     Deterministic hash-based mock embeddings for offline testing.
 

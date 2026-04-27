@@ -19,7 +19,7 @@ from apps.documents.serializers import (
     DocumentUploadSerializer,
     TagSerializer,
 )
-from apps.users.models import User
+from apps.users.models import User, UserRole
 from apps.users.permissions import IsEditorOrAdmin
 
 logger = structlog.get_logger(__name__)
@@ -105,14 +105,12 @@ class DocumentListView(generics.ListAPIView):
 
     def get_queryset(self):
         user = cast(User, self.request.user)
-        queryset = (
-            Document.objects.filter(
-                uploaded_by=user,
-                is_deleted=False,
-            )
-            .select_related("collection", "uploaded_by")
-            .prefetch_related("tags")
-        )
+        if user.role == UserRole.ADMIN:
+            queryset = Document.objects.filter(is_deleted=False)
+        else:
+            queryset = Document.objects.filter(uploaded_by=user, is_deleted=False)
+            
+        queryset = queryset.select_related("collection", "uploaded_by").prefetch_related("tags")
 
         # Filters
         collection_id = self.request.query_params.get("collection")
@@ -129,7 +127,6 @@ class DocumentListView(generics.ListAPIView):
 
         return queryset
 
-
 class DocumentDetailView(generics.RetrieveDestroyAPIView):
     """Get or delete a specific document."""
 
@@ -137,6 +134,8 @@ class DocumentDetailView(generics.RetrieveDestroyAPIView):
 
     def get_queryset(self):
         user = cast(User, self.request.user)
+        if user.role == UserRole.ADMIN:
+            return Document.objects.filter(is_deleted=False).prefetch_related("chunks", "tags")
         return Document.objects.filter(
             uploaded_by=user,
             is_deleted=False,
@@ -148,7 +147,7 @@ class DocumentDetailView(generics.RetrieveDestroyAPIView):
         instance.save(update_fields=["is_deleted"])
 
         # Remove from vector store
-        from apps.rag.vectorstore import delete_by_document_id
+        from apps.rag.services.vector_store import delete_by_document_id
 
         try:
             delete_by_document_id(str(instance.id))
@@ -321,7 +320,7 @@ class DocumentBulkActionView(APIView):
             for doc in documents:
                 doc.is_deleted = True
                 doc.save(update_fields=["is_deleted"])
-                from apps.rag.vectorstore import delete_by_document_id
+                from apps.rag.services.vector_store import delete_by_document_id
 
                 try:
                     delete_by_document_id(str(doc.id))

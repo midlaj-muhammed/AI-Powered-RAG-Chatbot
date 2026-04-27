@@ -1,3 +1,6 @@
+import logging
+
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db.models import Count, Q
 from rest_framework import generics, permissions, status
@@ -5,7 +8,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
-
+from google.oauth2 import id_token
+from google.auth.transport import requests
 from apps.users.permissions import IsAdmin
 from apps.users.serializers import (
     AdminUserSerializer,
@@ -17,6 +21,7 @@ from apps.users.serializers import (
 )
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 class RegisterView(generics.CreateAPIView):
@@ -190,3 +195,72 @@ class AdminUserDetailView(APIView):
 
         user.save()
         return Response(AdminUserSerializer(user).data)
+
+# Google Login View
+class GoogleLoginView(APIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request):
+        token = request.data.get("token")
+        if not token:
+            return Response(
+                {"error": "Token is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        client_id = getattr(settings, "GOOGLE_OAUTH_CLIENT_ID", "")
+        if not client_id:
+            logger.error("Google OAuth client ID is not configured")
+            return Response(
+                {"error": "Google Sign-In is not configured on the server."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        try:
+            # Verify the token with Google
+            idinfo = id_token.verify_oauth2_token(
+                token, requests.Request(), client_id
+            )
+
+            # Get user info from verified token
+            email = idinfo.get("email")
+            if not email:
+                return Response(
+                    {"error": "Invalid token: missing email claim"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            first_name = idinfo.get("given_name", "")
+            last_name = idinfo.get("family_name", "")
+
+            # Create or get user
+            user, created = User.objects.get_or_create(
+                email=email,
+                defaults={
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "role": "editor",  # Default role
+                },
+            )
+
+            # Generate JWT for our app
+            refresh = RefreshToken.for_user(user)
+
+            return Response(
+                {
+                    "access": str(refresh.access_token),
+                    "refresh": str(refresh),
+                    "user": UserSerializer(user).data,
+                }
+            )
+        except ValueError as e:
+            return Response(
+                {"error": f"Invalid token: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except Exception:
+            logger.exception("Unexpected error during Google Sign-In")
+            return Response(
+                {"error": "An unexpected error occurred during Google Sign-In."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )

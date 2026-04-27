@@ -17,6 +17,6 @@ urlpatterns = [
         TopDocumentsView.as_view(),
         name="analytics-top-docs",
     ),
-    path("admin/", AdminUserListView.as_view(), name="admin-users"),
+    path("users/", AdminUserListView.as_view(), name="admin-users"),
     path("users/<uuid:pk>/", AdminUserDetailView.as_view(), name="admin-user-detail"),
 ]

@@ -46,6 +46,21 @@ export function LoginPage() {
     }
   }
 
+  const handleGoogleSuccess = async (token: string) => {
+    setError('')
+    setLoading(true)
+    try {
+      const data = await authApi.googleLogin(token)
+      setAuth(data.user, data.access, data.refresh)
+      navigate('/chat')
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } }
+      setError(e.response?.data?.error || 'Google Sign-In failed. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <SignInPage
       heroImageSrc="https://images.unsplash.com/photo-1642615835477-d303d7dc9ee9?w=2160&q=80"
@@ -54,6 +69,7 @@ export function LoginPage() {
       loading={loading}
       onSignIn={handleSignIn}
       onCreateAccount={() => navigate('/register')}
+      onGoogleSuccess={handleGoogleSuccess}
     />
   )
 }

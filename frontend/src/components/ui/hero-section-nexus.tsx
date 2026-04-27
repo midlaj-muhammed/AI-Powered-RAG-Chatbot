@@ -19,6 +19,8 @@ import {
     type Variants,
 } from 'framer-motion';
 
+import { SplineScene } from './SplineScene';
+
 function cn(...classes: (string | undefined | null | boolean)[]): string {
     return classes.filter(Boolean).join(" ");
 }
@@ -486,17 +488,20 @@ export const HeroSectionNexus: React.FC = () => {
 
     return (
         <div className="relative flex flex-col items-center justify-center text-center px-4 pt-32 pb-16 overflow-hidden min-h-[90vh]">
-            <canvas ref={canvasRef} className="absolute inset-0 z-0 pointer-events-none opacity-80" />
+            <div className="absolute inset-0 z-0 pointer-events-none sm:pointer-events-auto">
+                <SplineScene scene="https://prod.spline.design/9geBQ60HHRD98rQJ/scene.splinecode" className="w-full h-full" />
+            </div>
+            <canvas ref={canvasRef} className="absolute inset-0 z-0 pointer-events-none opacity-80 mix-blend-screen" />
             <div className="absolute inset-0 z-1 pointer-events-none" style={{
                 background: 'linear-gradient(to bottom, transparent 0%, #050505 90%), radial-gradient(ellipse at center, transparent 40%, #050505 95%)'
             }}></div>
 
-            <div className="relative z-10 flex flex-col items-center max-w-7xl mx-auto w-full">
+            <div className="relative z-10 flex flex-col items-center max-w-7xl mx-auto w-full pointer-events-none">
                 <motion.div
                     variants={bannerVariants}
                     initial="hidden"
                     animate="visible"
-                    className="mb-6"
+                    className="mb-6 pointer-events-auto"
                 >
                     <ShinyText text="Enterprise-Ready RAG Platform" className="bg-[#1a1a1a] border border-gray-700 text-[#0CF2A0] px-4 py-1 rounded-full text-xs sm:text-sm font-medium cursor-pointer hover:border-[#0CF2A0]/50 transition-colors" />
                 </motion.div>
@@ -539,7 +544,7 @@ export const HeroSectionNexus: React.FC = () => {
                     variants={formVariants}
                     initial="hidden"
                     animate="visible"
-                    className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-md mx-auto mb-4"
+                    className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-md mx-auto mb-4 pointer-events-auto"
                 >
                     <motion.a
                         href="/register"
@@ -573,7 +578,7 @@ export const HeroSectionNexus: React.FC = () => {
                     variants={imageVariants}
                     initial="hidden"
                     animate="visible"
-                    className="w-full max-w-5xl mx-auto px-4 sm:px-0"
+                    className="w-full max-w-5xl mx-auto px-4 sm:px-0 pointer-events-auto"
                 >
                     <div className="relative group">
                         <div className="absolute -inset-1 bg-gradient-to-r from-[#0CF2A0]/20 to-emerald-500/20 rounded-2xl blur opacity-25 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>

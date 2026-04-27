@@ -436,6 +436,87 @@ User Query
 
 ---
 
+### 7.5 Project Structure
+
+rag-chatbot/
+├── backend/                          # Django Backend
+│   ├── config/                       # Django settings
+│   │   ├── settings/
+│   │   │   ├── base.py
+│   │   │   ├── development.py
+│   │   │   └── production.py
+│   │   ├── urls.py
+│   │   └── wsgi.py
+│   │
+│   ├── apps/
+│   │   ├── accounts/                 # User authentication
+│   │   ├── chat/                     # Chat sessions & messages
+│   │   ├── documents/                # Document upload & management
+│   │   └── rag/                      # RAG engine (LangChain)
+│   │       ├── services/
+│   │       │   ├── gemini_client.py  # Gemini LLM wrapper
+│   │       │   ├── embeddings.py     # Google Embeddings
+│   │       │   ├── vector_store.py   # Chroma integration
+│   │       │   └── rag_chain.py      # Main RAG pipeline
+│   │       ├── tasks.py              # Celery/Django-Q tasks
+│   │       └── utils/
+│   │           ├── document_loader.py
+│   │           └── text_splitter.py
+│   │
+│   ├── manage.py
+│   └── requirements.txt
+│
+├── frontend/                         # React Frontend
+│   ├── src/
+│   │   ├── components/               # Reusable UI components
+│   │   │   ├── ui/                   # shadcn/ui components
+│   │   │   ├── chat/
+│   │   │   │   ├── ChatContainer.tsx
+│   │   │   │   ├── MessageList.tsx
+│   │   │   │   ├── MessageBubble.tsx
+│   │   │   │   ├── ChatInput.tsx
+│   │   │   │   └── StreamingText.tsx
+│   │   │   ├── documents/
+│   │   │   │   ├── DocumentUpload.tsx
+│   │   │   │   └── DocumentList.tsx
+│   │   │   └── layout/
+│   │   │       ├── Sidebar.tsx
+│   │   │       └── Header.tsx
+│   │   │
+│   │   ├── hooks/                    # Custom React hooks
+│   │   │   ├── useChat.ts            # Chat logic & streaming
+│   │   │   ├── useDocuments.ts       # Document management
+│   │   │   └── useAuth.ts            # Authentication
+│   │   │
+│   │   ├── stores/                   # Zustand stores
+│   │   │   ├── chatStore.ts
+│   │   │   ├── authStore.ts
+│   │   │   └── documentStore.ts
+│   │   │
+│   │   ├── lib/                      # Utilities & config
+│   │   │   ├── api.ts                # Axios instance
+│   │   │   ├── utils.ts              # Helper functions
+│   │   │   └── constants.ts
+│   │   │
+│   │   ├── types/                    # TypeScript interfaces
+│   │   │   ├── chat.ts
+│   │   │   ├── document.ts
+│   │   │   └── api.ts
+│   │   │
+│   │   ├── App.tsx
+│   │   └── main.tsx
+│   │
+│   ├── public/
+│   ├── index.html
+│   ├── vite.config.ts
+│   ├── tailwind.config.ts
+│   ├── tsconfig.json
+│   └── package.json
+│
+└── docker-compose.yml                # Optional: for easy setup
+
+---
+
 ## 8. User Interface Requirements
 
 ### 8.1 Design Principles

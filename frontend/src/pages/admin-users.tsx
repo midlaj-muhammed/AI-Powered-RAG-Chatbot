@@ -32,7 +32,7 @@ export function AdminUsersPage() {
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['admin-users', search, roleFilter],
     queryFn: () =>
       adminApi.getUsers({
@@ -93,6 +93,17 @@ export function AdminUsersPage() {
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <PageLoader title="Syncing User Directory..." subtitle="Retrieving latest permission matrix" />
+          </div>
+        ) : error && (error as any).response?.status === 403 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-destructive/10 text-destructive mb-6">
+              <ShieldAlert className="h-10 w-10" />
+            </div>
+            <h2 className="text-xl font-semibold mb-2">Access Restricted</h2>
+            <p className="max-w-xs text-sm text-muted-foreground leading-relaxed">
+              You lack the Administrative clearance required to access the User Directory.
+              Contact a Senior Admin if this is an error.
+            </p>
           </div>
         ) : users.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">
@@ -191,7 +202,7 @@ function UserCard({
               <MessageSquare className="h-3 w-3" />
               {user.session_count} sessions
             </span>
-            <span>Joined {formatDate(user.date_joined)}</span>
+            <span>Joined {formatDate(user.created_at)}</span>
             {user.last_login && (
               <span>Last login {formatDate(user.last_login)}</span>
             )}

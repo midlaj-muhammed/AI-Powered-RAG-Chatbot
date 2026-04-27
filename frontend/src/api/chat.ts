@@ -154,4 +154,9 @@ export const chatApi = {
     })
     return data
   },
+
+  getSuggestions: async (): Promise<string[]> => {
+    const { data } = await api.get('/chat/suggestions/')
+    return data
+  },
 }

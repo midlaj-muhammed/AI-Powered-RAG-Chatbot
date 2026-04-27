@@ -1,21 +1,16 @@
-import importlib.util
 import os
-import sys
-from datetime import timedelta
 from pathlib import Path
 
 import dj_database_url
 import structlog
 
-# Detect if we are running in a test environment
-TESTING = "test" in sys.argv or "pytest" in sys.modules
-print(f"DEBUG_INFO: TESTING={TESTING}, sys.argv={sys.argv}")
-
 # Build paths
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # SECURITY
-SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-change-me-in-production")
+SECRET_KEY = os.environ.get(
+    "SECRET_KEY", "django-insecure-change-me-in-production"
+)
 DEBUG = os.environ.get("DEBUG", "True").lower() in ("true", "1", "yes")
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
@@ -41,9 +36,7 @@ CSRF_COOKIE_SAMESITE = "Lax"
 # CSRF Hardening
 CSRF_FAILURE_VIEW = "utils.csrf_views.csrf_failure_view"
 # Use CORS origins for CSRF trusted origins (they have schemes)
-CSRF_TRUSTED_ORIGINS = os.environ.get(
-    "CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
-).split(",")
+CSRF_TRUSTED_ORIGINS = os.environ.get("CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
 CSRF_COOKIE_NAME = "csrftoken"
 CSRF_HEADER_NAME = "HTTP_X_CSRFTOKEN"
 
@@ -79,6 +72,14 @@ THIRD_PARTY_APPS = [
     "drf_spectacular",
 ]
 
+# Add debug toolbar if in debug mode and available
+if DEBUG:
+    try:
+        import debug_toolbar  # noqa: F401
+        THIRD_PARTY_APPS.append("debug_toolbar")
+    except ImportError:
+        pass
+
 LOCAL_APPS = [
     "apps.users",
     "apps.chat",
@@ -105,13 +106,6 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "utils.middleware.SecurityHeadersMiddleware",  # Add security headers
 ]
-
-if DEBUG and importlib.util.find_spec("debug_toolbar"):
-    INSTALLED_APPS += ["debug_toolbar"]
-    MIDDLEWARE.insert(
-        MIDDLEWARE.index("django.middleware.common.CommonMiddleware") + 1,
-        "debug_toolbar.middleware.DebugToolbarMiddleware",
-    )
 
 ROOT_URLCONF = "config.urls"
 
@@ -146,13 +140,8 @@ AUTH_USER_MODEL = "users.User"
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
-        "OPTIONS": {"min_length": 8},
-    },
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 8}},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
     {"NAME": "apps.users.validators.CustomPasswordValidator"},
@@ -184,7 +173,9 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
-    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+    "DEFAULT_PERMISSION_CLASSES": (
+        "rest_framework.permissions.IsAuthenticated",
+    ),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
     "DEFAULT_FILTER_BACKENDS": (
@@ -194,34 +185,27 @@ REST_FRAMEWORK = {
     ),
     # Enhanced throttling with custom classes
     "DEFAULT_THROTTLE_CLASSES": (
-        []
-        if TESTING
-        else [
-            "utils.throttling.BurstRateThrottle",
-            "utils.throttling.SignedRequestRateThrottle",
-        ]
+        "utils.throttling.BurstRateThrottle",
+        "utils.throttling.SignedRequestRateThrottle",
     ),
     "DEFAULT_THROTTLE_RATES": {
         "user": "100/minute",
         "anon": "30/minute",
-        "auth": "10/minute",  # Authentication endpoints
-        "chat": "30/minute",  # Chat endpoints
-        "upload": "5/minute",  # File uploads
-        "download": "30/minute",  # File downloads
-        "admin": "200/minute",  # Admin operations
-        "export": "5/hour",  # Data exports
-        "sensitive": "20/minute",  # Sensitive operations
-        "burst": "5/10s",  # Burst rate
+        "auth": "10/minute",           # Authentication endpoints
+        "chat": "30/minute",           # Chat endpoints
+        "upload": "5/minute",          # File uploads
+        "download": "30/minute",       # File downloads
+        "admin": "200/minute",         # Admin operations
+        "export": "5/hour",            # Data exports
+        "sensitive": "20/minute",      # Sensitive operations
+        "burst": "5/10s",             # Burst rate
     },
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "EXCEPTION_HANDLER": "utils.exceptions.custom_exception_handler",
 }
 
-if TESTING:
-    REST_FRAMEWORK["DEFAULT_THROTTLE_CLASSES"] = []
-    REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {}
-
 # JWT Settings
+from datetime import timedelta
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
@@ -255,7 +239,6 @@ Q_CLUSTER = {
     "workers": 2,
     "recycle": 500,
     "timeout": 300,
-    "retry": 360,
     "compress": True,
     "save_limit": 250,
     "queue_limit": 500,
@@ -311,7 +294,10 @@ LOGGING = {
 
 # Google AI Configuration (fallback provider)
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash-exp")
+
+# Google OAuth Configuration
+GOOGLE_OAUTH_CLIENT_ID = os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "")
 
 # Groq Configuration (recommended free provider)
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
@@ -331,15 +317,22 @@ OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL", "")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.1:8b")
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
 
+# OpenRouter Configuration
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "openai/gpt-oss-120b:free")
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+OPENROUTER_EMBEDDING_MODEL = os.environ.get("OPENROUTER_EMBEDDING_MODEL", "google/gemini-embedding-2-preview")
+
 # Embedding Configuration
 EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "text-embedding-004")
-EMBEDDING_PROVIDER = os.environ.get("EMBEDDING_PROVIDER", "groq")
+EMBEDDING_PROVIDER = os.environ.get("EMBEDDING_PROVIDER", "gemini")
 EMBEDDING_API_KEY = os.environ.get("EMBEDDING_API_KEY", "")
+EMBEDDING_FALLBACK_PROVIDER = "openrouter"
 
 # RAG Configuration Defaults
 RAG_CONFIG = {
     "top_k": 5,
-    "similarity_threshold": 0.1,
+    "similarity_threshold": 0.3,
     "max_context_tokens": 4000,
     "chunk_size": 800,
     "chunk_overlap": 200,
@@ -350,6 +343,9 @@ RAG_CONFIG = {
 # Chroma Configuration
 CHROMA_PERSIST_DIR = os.environ.get("CHROMA_PERSIST_DIR", str(BASE_DIR / "chroma_data"))
 
+# Qdrant Configuration
+QDRANT_URL = os.environ.get("QDRANT_URL", "http://localhost:6333")
+
 # Upload Configuration
 ALLOWED_UPLOAD_TYPES = [
     "application/pdf",
@@ -358,27 +354,6 @@ ALLOWED_UPLOAD_TYPES = [
     "text/csv",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    # Multimodal support
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-    "image/heic",
-    "image/heif",
-    "video/mp4",
-    "video/mpeg",
-    "video/mov",
-    "video/avi",
-    "video/x-flv",
-    "video/mpg",
-    "video/webm",
-    "video/wmv",
-    "video/3gpp",
-    "audio/wav",
-    "audio/mp3",
-    "audio/aiff",
-    "audio/aac",
-    "audio/ogg",
-    "audio/flac",
 ]
 MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB
 

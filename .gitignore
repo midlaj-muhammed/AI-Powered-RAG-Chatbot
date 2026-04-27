@@ -60,3 +60,14 @@ coverage.xml
 
 # mypy
 .mypy_cache/
+
+# Agent
+.agent/
+.tools/
+
+# Large artifacts
+*.docx
+Screenshots/
+graphs/
+reports/
+frontend/*.zip

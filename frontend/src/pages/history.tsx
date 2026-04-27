@@ -16,8 +16,11 @@ import {
   Filter,
   X,
   CalendarDays,
+  ShieldCheck,
+  User,
 } from 'lucide-react'
 import { chatApi } from '@/api/chat'
+import { useAuthStore } from '@/stores/auth-store'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -26,6 +29,8 @@ import { PageLoader } from '@/components/ui/spinner'
 import type { QueryHistoryItem } from '@/api/types'
 
 export function HistoryPage() {
+  const { user } = useAuthStore()
+  const isAdmin = user?.role === 'admin'
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
@@ -127,9 +132,17 @@ export function HistoryPage() {
       <div className="border-b border-border bg-card px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold">History & Exports</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-semibold">History & Exports</h1>
+              {isAdmin && (
+                <Badge variant="outline" className="gap-1 text-[10px] bg-primary/5 text-primary border-primary/20">
+                  <ShieldCheck className="h-3 w-3" />
+                  Platform Oversight Active
+                </Badge>
+              )}
+            </div>
             <p className="text-sm text-muted-foreground">
-              Browse past queries, save searches, and export data
+              {isAdmin ? "Monitoring and managing platform-wide query patterns" : "Browse past queries, save searches, and export data"}
             </p>
           </div>
           <Button variant="outline" size="sm" onClick={handleExportDocs}>
@@ -279,6 +292,11 @@ export function HistoryPage() {
                           </p>
                           <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
                             <span>{new Date(item.created_at).toLocaleString()}</span>
+                            <span>•</span>
+                            <span className="flex items-center gap-1 font-medium text-foreground/70">
+                              <User className="h-3 w-3" />
+                              {item.user_email}
+                            </span>
                             <span>•</span>
                             <span>{item.session_title}</span>
                             {item.ai_response && (

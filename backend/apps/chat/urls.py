@@ -12,9 +12,11 @@ from apps.chat.views import (
     SavedSearchListCreateView,
     SendMessageView,
     ToggleFavoriteView,
+    GetSuggestionsView,
 )
 
 urlpatterns = [
+    path("suggestions/", GetSuggestionsView.as_view(), name="chat-suggestions"),
     path(
         "attachments/upload/", AttachmentUploadView.as_view(), name="attachment-upload"
     ),

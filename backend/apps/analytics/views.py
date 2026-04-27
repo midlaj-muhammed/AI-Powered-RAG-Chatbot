@@ -13,7 +13,7 @@ from rest_framework.views import APIView
 
 from apps.chat.models import ChatSession, Message, MessageFeedback
 from apps.documents.models import Document, DocumentChunk, DocumentStatus
-from apps.users.permissions import IsEditorOrAdmin
+from apps.users.permissions import IsAdmin
 
 logger = structlog.get_logger(__name__)
 
@@ -24,7 +24,7 @@ ANALYTICS_CACHE_TTL = 120  # 2 minutes
 class DashboardOverviewView(APIView):
     """High-level analytics for the admin dashboard."""
 
-    permission_classes = (permissions.IsAuthenticated, IsEditorOrAdmin)
+    permission_classes = (permissions.IsAuthenticated, IsAdmin)
 
     def get(self, request):
         cache_key = "dashboard_overview"
@@ -99,7 +99,7 @@ class DashboardOverviewView(APIView):
 class UsageTimelineView(APIView):
     """Daily usage stats for charts — messages and sessions over time."""
 
-    permission_classes = (permissions.IsAuthenticated, IsEditorOrAdmin)
+    permission_classes = (permissions.IsAuthenticated, IsAdmin)
 
     def get(self, request):
         days = int(request.query_params.get("days", 30))
@@ -155,7 +155,7 @@ class UsageTimelineView(APIView):
 class QueryAnalyticsView(APIView):
     """Query performance analytics — latency, tokens, confidence distribution."""
 
-    permission_classes = (permissions.IsAuthenticated, IsEditorOrAdmin)
+    permission_classes = (permissions.IsAuthenticated, IsAdmin)
 
     def get(self, request):
         cache_key = "query_analytics"
@@ -212,7 +212,7 @@ class QueryAnalyticsView(APIView):
 class TopDocumentsView(APIView):
     """Most referenced documents in chat responses."""
 
-    permission_classes = (permissions.IsAuthenticated, IsEditorOrAdmin)
+    permission_classes = (permissions.IsAuthenticated, IsAdmin)
 
     def get(self, request):
         cache_key = "top_documents"

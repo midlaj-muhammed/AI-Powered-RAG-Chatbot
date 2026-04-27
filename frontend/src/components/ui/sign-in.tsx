@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
+import { GoogleLogin } from '@react-oauth/google';
 
 // --- TYPE DEFINITIONS ---
 
@@ -19,6 +20,7 @@ interface SignInPageProps {
     loading?: boolean;
     onSignIn?: (email: string, password: string, rememberMe: boolean) => void;
     onCreateAccount?: () => void;
+    onGoogleSuccess?: (token: string) => void;
 }
 
 // --- SUB-COMPONENTS ---
@@ -69,6 +71,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
     loading = false,
     onSignIn,
     onCreateAccount,
+    onGoogleSuccess,
 }) => {
     const [showPassword, setShowPassword] = useState(false);
     const [email, setEmail] = useState('');
@@ -190,6 +193,32 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                                 )}
                                 {loading ? 'Signing in…' : 'Sign In'}
                             </button>
+
+                            {onGoogleSuccess && (
+                                <>
+                                    <div className="animate-element animate-delay-600 flex items-center gap-4 my-2">
+                                        <div className="h-px bg-border flex-1" />
+                                        <span className="text-xs text-muted-foreground uppercase font-medium">Or continue with</span>
+                                        <div className="h-px bg-border flex-1" />
+                                    </div>
+
+                                    <div className="animate-element animate-delay-600 flex justify-center">
+                                        <GoogleLogin
+                                            onSuccess={(credentialResponse) => {
+                                                if (credentialResponse.credential) {
+                                                    onGoogleSuccess(credentialResponse.credential);
+                                                }
+                                            }}
+                                            onError={() => {
+                                                console.error('Google Sign-In Failed');
+                                            }}
+                                            theme="filled_black"
+                                            shape="pill"
+                                            width="100%"
+                                        />
+                                    </div>
+                                </>
+                            )}
                         </form>
 
                         <p className="animate-element animate-delay-700 text-center text-sm text-muted-foreground">
@@ -262,6 +291,7 @@ interface SignUpPageProps {
         password_confirm: string;
     }) => void;
     onSignIn?: () => void;
+    onGoogleSuccess?: (token: string) => void;
 }
 
 // --- MAIN SIGN-UP COMPONENT ---
@@ -280,6 +310,7 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
     loading = false,
     onSignUp,
     onSignIn,
+    onGoogleSuccess,
 }) => {
     const [showPassword, setShowPassword] = useState(false);
     const [form, setForm] = useState({
@@ -459,6 +490,32 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                                 )}
                                 {loading ? 'Creating account…' : 'Create Account'}
                             </button>
+
+                            {onGoogleSuccess && (
+                                <>
+                                    <div className="animate-element animate-delay-700 flex items-center gap-4 my-2">
+                                        <div className="h-px bg-border flex-1" />
+                                        <span className="text-xs text-muted-foreground uppercase font-medium">Or continue with</span>
+                                        <div className="h-px bg-border flex-1" />
+                                    </div>
+
+                                    <div className="animate-element animate-delay-700 flex justify-center">
+                                        <GoogleLogin
+                                            onSuccess={(credentialResponse) => {
+                                                if (credentialResponse.credential) {
+                                                    onGoogleSuccess(credentialResponse.credential);
+                                                }
+                                            }}
+                                            onError={() => {
+                                                console.error('Google Sign-In Failed');
+                                            }}
+                                            theme="filled_black"
+                                            shape="pill"
+                                            width="100%"
+                                        />
+                                    </div>
+                                </>
+                            )}
                         </form>
 
                         <p className="animate-element animate-delay-800 text-center text-sm text-muted-foreground">

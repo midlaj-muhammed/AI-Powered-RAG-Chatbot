@@ -5,6 +5,6 @@ This module provides the simplified get_llm() interface used throughout the code
 The actual provider logic is in providers.py.
 """
 
-from .providers import LLMProvider, clear_llm_cache, get_llm
+from .services.gemini_client import LLMProvider, clear_llm_cache, get_llm
 
 __all__ = ["get_llm", "clear_llm_cache", "LLMProvider"]

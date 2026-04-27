@@ -41,6 +41,12 @@ export function ChatPage() {
     staleTime: 5 * 60 * 1000, // 5 minutes
   })
 
+  const { data: suggestions, isLoading: isLoadingSuggestions } = useQuery({
+    queryKey: ['suggestions'],
+    queryFn: chatApi.getSuggestions,
+    staleTime: 10 * 60 * 1000, // 10 minutes
+  })
+
   // Show error message if collections fail to load
   useEffect(() => {
     if (collectionsError) {
@@ -49,9 +55,17 @@ export function ChatPage() {
   }, [collectionsError])
 
   // Auto-scroll to bottom
+  const lastScrollTime = useRef(0)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, streamingContent])
+    const now = Date.now()
+    // Throttle scroll during streaming (every 100ms)
+    if (isStreaming && now - lastScrollTime.current < 100) return
+    
+    lastScrollTime.current = now
+    messagesEndRef.current?.scrollIntoView({ 
+      behavior: isStreaming ? 'auto' : 'smooth' 
+    })
+  }, [messages, streamingContent, isStreaming])
 
   const handleInputError = useCallback((error: string) => {
     toastWarning(error)
@@ -110,6 +124,15 @@ export function ChatPage() {
             case 'token':
               appendStreamContent(event.content)
               fullContent += event.content
+              break
+            case 'thought':
+              // For now, we'll just log thoughts or display them in a "Thinking" state
+              // You could expand this to show a separate "Thought" bubble
+              console.log('AI Thought:', event.content)
+              break
+            case 'status':
+              // Show a toast or update a status indicator
+              console.info('Agent Status:', event.content)
               break
             case 'done': {
               // Add the final assistant message
@@ -222,7 +245,11 @@ export function ChatPage() {
         {/* Messages area */}
         <div className="flex-1 overflow-y-auto">
           {messages.length === 0 && !isStreaming ? (
-            <EmptyState onSuggestionClick={handleSend} />
+            <EmptyState
+              onSuggestionClick={handleSend}
+              suggestions={suggestions}
+              isLoading={isLoadingSuggestions}
+            />
           ) : (
             <div className="mx-auto max-w-3xl py-4">
               {messages.map((msg) => (
@@ -329,7 +356,24 @@ export function ChatPage() {
   )
 }
 
-function EmptyState({ onSuggestionClick }: { onSuggestionClick?: (text: string) => void }) {
+function EmptyState({
+  onSuggestionClick,
+  suggestions,
+  isLoading
+}: {
+  onSuggestionClick?: (text: string) => void,
+  suggestions?: string[],
+  isLoading: boolean
+}) {
+  const defaultSuggestions = [
+    'What were the Q3 sales figures?',
+    'Summarize the HR policy changes',
+    'What are the product roadmap priorities?',
+    'Show me the latest financial report',
+  ]
+
+  const displaySuggestions = suggestions || defaultSuggestions
+
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 p-8">
       <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
@@ -343,20 +387,22 @@ function EmptyState({ onSuggestionClick }: { onSuggestionClick?: (text: string) 
         </p>
       </div>
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
-        {[
-          'What were the Q3 sales figures?',
-          'Summarize the HR policy changes',
-          'What are the product roadmap priorities?',
-          'Show me the latest financial report',
-        ].map((suggestion) => (
-          <button
-            key={suggestion}
-            onClick={() => onSuggestionClick?.(suggestion)}
-            className="rounded-xl border border-border bg-card px-4 py-2.5 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          >
-            {suggestion}
-          </button>
-        ))}
+        {isLoading ? (
+          // Skeleton loading for suggestions
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-10 w-48 animate-pulse rounded-xl bg-accent/20" />
+          ))
+        ) : (
+          displaySuggestions.map((suggestion) => (
+            <button
+              key={suggestion}
+              onClick={() => onSuggestionClick?.(suggestion)}
+              className="rounded-xl border border-border bg-card px-4 py-2.5 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              {suggestion}
+            </button>
+          ))
+        )}
       </div>
     </div>
   )

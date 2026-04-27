@@ -47,15 +47,16 @@ class HealthCheckView(APIView):
             health["services"]["redis"] = {"status": "down", "error": str(e)}
             health["status"] = "unhealthy"
 
-        # Check Chroma
+        # Check Qdrant
         try:
-            from apps.rag.vectorstore import get_vectorstore
+            from apps.rag.services.vector_store import get_qdrant_client
 
-            vs = get_vectorstore()
-            count = vs._collection.count()
-            health["services"]["chroma"] = {"status": "up", "documents": count}
+            client = get_qdrant_client()
+            collection_info = client.get_collection("rag_documents")
+            count = collection_info.points_count
+            health["services"]["qdrant"] = {"status": "up", "documents": count}
         except Exception as e:
-            health["services"]["chroma"] = {"status": "down", "error": str(e)}
+            health["services"]["qdrant"] = {"status": "down", "error": str(e)}
             health["status"] = "degraded"
 
         # Check Google API Key configured

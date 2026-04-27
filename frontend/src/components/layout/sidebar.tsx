@@ -19,10 +19,11 @@ import type { Document as AIDocument } from '@/api/types'
 
 export function Sidebar() {
   const location = useLocation()
-  const { logout } = useAuthStore()
-  const { sidebarOpen, toggleSidebar } = useChatStore()
+  const { user, logout } = useAuthStore()
+  const { sidebarOpen, toggleSidebar, reset: resetChatStore } = useChatStore()
 
   const handleLogout = () => {
+    resetChatStore()
     logout()
   }
 
@@ -43,29 +44,35 @@ export function Sidebar() {
     (d: AIDocument) => d.status === 'pending' || d.status === 'processing'
   ).length || 0
 
+
+
   const navItems = [
     {
       label: 'Dashboard',
       href: '/dashboard',
       icon: LayoutDashboard,
+      roles: ['admin'],
     },
     {
       label: 'Chat',
       href: '/chat',
       icon: MessageSquare,
+      roles: ['admin', 'editor', 'viewer'],
     },
     {
       label: 'Documents',
       href: '/documents',
       icon: FileText,
       badge: processingCount > 0 ? processingCount : undefined,
+      roles: ['admin', 'editor'],
     },
     {
       label: 'Members',
-      href: '/members',
+      href: '/admin/users',
       icon: Users,
+      roles: ['admin'],
     },
-  ]
+  ].filter(item => item.roles.includes(user?.role || 'viewer'))
 
   return (
     <aside

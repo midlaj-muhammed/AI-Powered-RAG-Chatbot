@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from 'react'
-import { Plus, Trash2, MessageSquare } from 'lucide-react'
+import { Plus, Trash2, MessageSquare, User } from 'lucide-react'
 import { cn, formatDate, truncate } from '@/lib/utils'
+import { useAuthStore } from '@/stores/auth-store'
 import { useChatStore } from '@/stores/chat-store'
 import { chatApi } from '@/api/chat'
 import { Button } from '@/components/ui/button'
@@ -17,6 +18,8 @@ export function ChatSidebar() {
     setMessages,
     sidebarOpen,
   } = useChatStore()
+  const { user } = useAuthStore()
+  const isAdmin = user?.role === 'admin'
 
   const loadSessions = useCallback(async () => {
     try {
@@ -114,6 +117,12 @@ export function ChatSidebar() {
                       ? truncate(typeof session.last_message === 'string' ? session.last_message : session.last_message.content, 30)
                       : formatDate(session.created_at)}
                   </p>
+                  {isAdmin && (
+                    <p className="flex items-center gap-1 text-[10px] text-muted-foreground/50 mt-0.5">
+                      <User className="h-2.5 w-2.5" />
+                      {session.user_email}
+                    </p>
+                  )}
                 </div>
                 <button
                   onClick={(e) => handleDeleteSession(e, session.id)}

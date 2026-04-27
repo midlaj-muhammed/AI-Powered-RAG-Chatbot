@@ -40,7 +40,7 @@ function FeaturesSection() {
         {
             icon: Zap,
             title: "Zero-Latency Retrieval",
-            description: "Distributed ChromaDB vector searches guarantee sub-millisecond context gathering.",
+            description: "High-performance Qdrant vector searches guarantee sub-millisecond context gathering.",
             color: "#10B981" // emerald-500
         },
         {
@@ -57,8 +57,8 @@ function FeaturesSection() {
         },
         {
             icon: Search,
-            title: "Hybrid Search",
-            description: "Combines dense vector similarity with sparse keyword matching for unparalleled accuracy.",
+            title: "Agentic Semantic Search",
+            description: "Multi-step reasoning agents that intelligently rewrite queries and self-correct to find the deepest document insights.",
             color: "#F43F5E" // rose-500
         },
         {
@@ -135,7 +135,7 @@ function ArchitectureSection() {
                             {[
                                 "1. Documents and media (Images/Video) are parsed into semantic fragments.",
                                 "2. Content is embedded into 3072-dimensional multimodal vectors.",
-                                "3. Vectors are indexed in a high-speed ChromaDB collection.",
+                                "3. Vectors are indexed in a high-speed Qdrant collection.",
                                 "4. User queries are embedded and compared via Cosine Similarity."
                             ].map((step, i) => (
                                 <motion.div key={i} variants={fadeInUp} className="flex items-start gap-4">

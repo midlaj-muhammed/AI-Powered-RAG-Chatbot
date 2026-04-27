@@ -25,6 +25,7 @@ class LLMProvider:
     GEMINI = "gemini"
     OPENAI = "openai"
     OLLAMA = "ollama"
+    OPENROUTER = "openrouter"
 
 
 def get_llm_provider() -> str:
@@ -32,25 +33,24 @@ def get_llm_provider() -> str:
     return getattr(settings, "LLM_PROVIDER", LLMProvider.GEMINI).lower()
 
 
-def get_llm(streaming: bool = True) -> BaseChatModel:
+def get_llm(streaming: bool = True, provider: str | None = None) -> BaseChatModel:
     """
     Get an LLM instance based on the configured provider.
 
     Args:
         streaming: Whether to enable streaming responses
+        provider: Optional provider override (e.g. "openrouter")
 
     Returns:
         BaseChatModel instance
     """
-    provider = get_llm_provider()
+    if not provider:
+        provider = get_llm_provider()
+    
     cache_key = f"{provider}_{streaming}"
 
     if cache_key in _llm_instances:
-        instance = _llm_instances[cache_key]
-        # For Groq and OpenAI, we can reuse the same instance
-        # For Gemini, we need to ensure streaming setting matches
-        if provider != LLMProvider.GEMINI:
-            return instance
+        return _llm_instances[cache_key]
 
     # Create new instance based on provider
     if provider == LLMProvider.GROQ:
@@ -61,12 +61,23 @@ def get_llm(streaming: bool = True) -> BaseChatModel:
         llm = _create_openai_llm(streaming)
     elif provider == LLMProvider.OLLAMA:
         llm = _create_ollama_llm(streaming)
+    elif provider == LLMProvider.OPENROUTER:
+        llm = _create_openrouter_llm(streaming)
     else:
         logger.warning("unknown_provider", provider=provider, defaulting_to="gemini")
         llm = _create_gemini_llm(streaming)
 
     # Cache instance
     _llm_instances[cache_key] = llm
+    
+    # Attach provider info for fallback logic
+    try:
+        # Use setattr which is safer, but still might fail on Pydantic models
+        setattr(llm, "provider", provider)
+    except Exception:
+        # Fallback for models that don't allow dynamic attribute assignment
+        # We can still check the provider via type() in rag_chain.py if needed
+        pass
 
     logger.info(
         "llm_initialized",
@@ -142,6 +153,20 @@ def _create_ollama_llm(streaming: bool = True) -> BaseChatModel:
         temperature=float(settings.RAG_CONFIG.get("temperature", 0.3)),
         num_predict=int(settings.RAG_CONFIG.get("max_output_tokens", 2048)),
         base_url=base_url if base_url else None,
+    )
+
+
+def _create_openrouter_llm(streaming: bool = True) -> BaseChatModel:
+    """Create an OpenRouter LLM instance."""
+    from langchain_openai import ChatOpenAI
+
+    return ChatOpenAI(
+        model=str(getattr(settings, "OPENROUTER_MODEL", "openai/gpt-oss-120b:free")),
+        api_key=str(getattr(settings, "OPENROUTER_API_KEY", "")),  # type: ignore
+        base_url=str(getattr(settings, "OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")),
+        streaming=streaming,
+        temperature=float(settings.RAG_CONFIG.get("temperature", 0.3)),
+        max_tokens=int(settings.RAG_CONFIG.get("max_output_tokens", 2048)),
     )
 
 

@@ -19,6 +19,8 @@ import {
   ChevronRight,
   Info,
   Tag,
+  ShieldCheck,
+  User,
 } from 'lucide-react'
 import { cn, formatFileSize, formatDate } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -29,6 +31,7 @@ import { toastError } from '@/components/ui/toast-lib'
 import FileUpload from '@/components/ui/file-upload'
 import { documentsApi } from '@/api/documents'
 import { adminApi } from '@/api/admin'
+import { useAuthStore } from '@/stores/auth-store'
 import type { Document as RAGDocument } from '@/api/types'
 
 const statusConfig = {
@@ -55,6 +58,8 @@ const mimeIcons: Record<string, string> = {
 }
 
 export function DocumentsPage() {
+  const { user } = useAuthStore()
+  const isAdmin = user?.role === 'admin'
   const queryClient = useQueryClient()
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [search, setSearch] = useState('')
@@ -260,6 +265,12 @@ export function DocumentsPage() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-lg font-semibold">Documents</h1>
+                {isAdmin && (
+                  <Badge variant="outline" className="gap-1 text-[10px] bg-primary/5 text-primary border-primary/20">
+                    <ShieldCheck className="h-3 w-3" />
+                    Platform Oversight Active
+                  </Badge>
+                )}
                 {docsData?.results?.some((d: RAGDocument) => d.status === 'pending' || d.status === 'processing') && (
                   <Badge variant="default" className="gap-1.5 h-6 animate-pulse bg-primary/10 text-primary border-primary/20 hover:bg-primary/20">
                     <Loader2 className="h-3 w-3 animate-spin" />
@@ -268,7 +279,7 @@ export function DocumentsPage() {
                 )}
               </div>
               <p className="text-sm text-muted-foreground">
-                Upload and manage your knowledge base documents
+                {isAdmin ? "Monitoring and managing platform-wide knowledge base" : "Upload and manage your knowledge base documents"}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -503,6 +514,12 @@ function DocumentCard({
           <p className="text-xs text-muted-foreground">
             {formatFileSize(doc.file_size)}
           </p>
+          <div className="mt-1 flex items-center gap-1.5 overflow-hidden">
+            <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded truncate">
+              <User className="h-2.5 w-2.5" />
+              {doc.uploaded_by_email}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -630,6 +647,12 @@ function DocumentRow({
         <p className="text-xs text-muted-foreground">
           {formatFileSize(doc.file_size)} · {formatDate(doc.created_at)}
         </p>
+        <div className="flex items-center gap-2 mt-0.5">
+          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+            <User className="h-2.5 w-2.5" />
+            {doc.uploaded_by_email}
+          </span>
+        </div>
       </div>
       {doc.collection_name && (
         <Badge variant="outline" className="text-xs">
