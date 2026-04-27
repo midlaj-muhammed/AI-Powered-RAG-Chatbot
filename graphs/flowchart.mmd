@@ -1,0 +1,25 @@
+flowchart TD
+  A[User Opens App] --> B{Authenticated?}
+  B -- No --> C[Login or Register]
+  C --> D[Issue JWT Access + Refresh Tokens]
+  D --> E[Load Dashboard]
+  B -- Yes --> E
+
+  E --> F{Choose Feature}
+  F --> G[Chat with RAG]
+  F --> H[Upload Documents]
+  F --> I[View Analytics]
+  F --> J[Manage Users - Admin]
+
+  H --> K[Parse Document]
+  K --> L[Chunk + Embed]
+  L --> M[Store Vectors in Qdrant]
+  M --> N[Store Metadata in PostgreSQL]
+
+  G --> O[Retrieve Top-K Context]
+  O --> P[Generate LLM Response]
+  P --> Q[Return Answer + Sources]
+
+  I --> R[Aggregate Metrics]
+  J --> S[Update Roles / Status]
+  Q --> T[Persist Session and Messages]

@@ -1,0 +1,59 @@
+classDiagram
+  class FrontendApp {
+    +login()
+    +uploadDocument()
+    +askQuestion()
+    +viewDashboard()
+  }
+
+  class AuthAPI {
+    +register()
+    +tokenObtainPair()
+    +googleLogin()
+    +refreshToken()
+  }
+
+  class DocumentAPI {
+    +createDocument()
+    +listDocuments()
+    +deleteDocument()
+  }
+
+  class ChatAPI {
+    +createSession()
+    +sendMessage()
+    +listHistory()
+  }
+
+  class AnalyticsAPI {
+    +dashboardOverview()
+    +usageTimeline()
+    +queryAnalytics()
+    +listUsers()
+  }
+
+  class WorkerService {
+    +processDocument()
+    +buildEmbeddings()
+  }
+
+  class VectorStore {
+    +upsertVectors()
+    +searchSimilar()
+  }
+
+  class LLMGateway {
+    +generateResponse()
+    +embedText()
+  }
+
+  FrontendApp --> AuthAPI
+  FrontendApp --> DocumentAPI
+  FrontendApp --> ChatAPI
+  FrontendApp --> AnalyticsAPI
+
+  DocumentAPI --> WorkerService
+  WorkerService --> VectorStore
+  WorkerService --> LLMGateway
+  ChatAPI --> VectorStore
+  ChatAPI --> LLMGateway

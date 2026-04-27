@@ -1,0 +1,26 @@
+flowchart LR
+  A[Guest]
+  B[Authenticated User]
+  C[Admin]
+
+  UC1((Register Account))
+  UC2((Login))
+  UC3((Upload Document))
+  UC4((Ask RAG Question))
+  UC5((View Chat History))
+  UC6((Manage Documents))
+  UC7((View Dashboard Analytics))
+  UC8((Manage Users and Roles))
+
+  A --> UC1
+  A --> UC2
+
+  B --> UC3
+  B --> UC4
+  B --> UC5
+  B --> UC6
+
+  C --> UC7
+  C --> UC8
+  C --> UC6
+  C --> UC4

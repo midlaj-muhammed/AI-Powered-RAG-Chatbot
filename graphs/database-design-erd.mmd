@@ -1,0 +1,66 @@
+erDiagram
+  USERS {
+    uuid id PK
+    string email UK
+    string first_name
+    string last_name
+    string role
+    boolean is_active
+    datetime created_at
+    datetime last_login
+  }
+
+  DOCUMENTS {
+    uuid id PK
+    uuid user_id FK
+    string filename
+    string mime_type
+    string status
+    int total_chunks
+    int total_tokens
+    boolean is_deleted
+    datetime created_at
+  }
+
+  DOCUMENT_CHUNKS {
+    uuid id PK
+    uuid document_id FK
+    int chunk_index
+    text content
+    string vector_id
+    datetime created_at
+  }
+
+  CHAT_SESSIONS {
+    uuid id PK
+    uuid user_id FK
+    string title
+    boolean is_archived
+    datetime created_at
+    datetime updated_at
+  }
+
+  MESSAGES {
+    uuid id PK
+    uuid session_id FK
+    string role
+    text content
+    float confidence
+    int tokens_used
+    int latency_ms
+    datetime created_at
+  }
+
+  FEEDBACK {
+    uuid id PK
+    uuid message_id FK
+    string sentiment
+    text comment
+    datetime created_at
+  }
+
+  USERS ||--o{ DOCUMENTS : uploads
+  DOCUMENTS ||--o{ DOCUMENT_CHUNKS : contains
+  USERS ||--o{ CHAT_SESSIONS : owns
+  CHAT_SESSIONS ||--o{ MESSAGES : includes
+  MESSAGES ||--o| FEEDBACK : receives

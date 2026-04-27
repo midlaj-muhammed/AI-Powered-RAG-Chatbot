@@ -1,0 +1,22 @@
+flowchart LR
+  U[Users\nAdmin / Editor / Viewer] --> FE[React Frontend\nVite + TypeScript]
+  FE --> API[Django REST API\nAuth + Chat + Documents + Analytics]
+
+  API --> PG[(PostgreSQL)]
+  API --> RD[(Redis Cache)]
+  API --> QD[(Qdrant Vector DB)]
+  API --> ST[(File Storage\nmedia/uploads)]
+
+  API --> LLM[LLM Services\nGemini / Groq / OpenAI / Ollama]
+  API --> WK[Background Worker\nDjango-Q]
+  WK --> QD
+  WK --> PG
+
+  subgraph Deploy[Docker Compose Stack]
+    FE
+    API
+    WK
+    PG
+    RD
+    QD
+  end

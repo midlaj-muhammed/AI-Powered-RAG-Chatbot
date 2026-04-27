@@ -1,0 +1,16 @@
+flowchart TD
+  Start([Start]) --> A[User uploads document]
+  A --> B[Validate file type and size]
+  B --> C{Valid?}
+  C -- No --> X[Reject upload with error]
+  X --> End([End])
+
+  C -- Yes --> D[Store original file]
+  D --> E[Extract text]
+  E --> F[Chunk content]
+  F --> G[Generate embeddings]
+  G --> H[Upsert vectors to Qdrant]
+  H --> I[Persist chunk metadata]
+  I --> J[Mark document as indexed]
+  J --> K[Notify user status complete]
+  K --> End

@@ -1,0 +1,48 @@
+classDiagram
+  class User {
+    +UUID id
+    +string email
+    +string role
+    +bool is_active
+    +get_full_name()
+  }
+
+  class Document {
+    +UUID id
+    +string filename
+    +string status
+    +int total_chunks
+    +soft_delete()
+  }
+
+  class DocumentChunk {
+    +UUID id
+    +int chunk_index
+    +string vector_id
+  }
+
+  class ChatSession {
+    +UUID id
+    +string title
+    +bool is_archived
+  }
+
+  class Message {
+    +UUID id
+    +string role
+    +text content
+    +float confidence
+    +int tokens_used
+  }
+
+  class Feedback {
+    +UUID id
+    +string sentiment
+    +text comment
+  }
+
+  User "1" --> "0..*" Document : owns
+  Document "1" --> "1..*" DocumentChunk : split_into
+  User "1" --> "0..*" ChatSession : starts
+  ChatSession "1" --> "1..*" Message : contains
+  Message "1" --> "0..1" Feedback : receives

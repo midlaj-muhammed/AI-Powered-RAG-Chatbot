@@ -1,0 +1,33 @@
+flowchart LR
+  User((End User))
+  Admin((Admin))
+
+  P1[1.0 Auth Service]
+  P2[2.0 Document Processing]
+  P3[3.0 Chat Query Engine]
+  P4[4.0 Analytics & Admin]
+
+  D1[(D1 User Store)]
+  D2[(D2 Document Metadata)]
+  D3[(D3 Vector Store)]
+  D4[(D4 Chat History)]
+
+  User -->|credentials| P1
+  P1 -->|profile + token| User
+  P1 <--> D1
+
+  User -->|documents| P2
+  P2 -->|status| User
+  P2 <--> D2
+  P2 <--> D3
+
+  User -->|question| P3
+  P3 -->|answer + citations| User
+  P3 <--> D3
+  P3 <--> D4
+
+  Admin -->|dashboard request| P4
+  P4 -->|reports + user insights| Admin
+  P4 <--> D1
+  P4 <--> D2
+  P4 <--> D4

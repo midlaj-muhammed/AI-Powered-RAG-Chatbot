@@ -1,0 +1,19 @@
+sequenceDiagram
+  autonumber
+  actor User
+  participant FE as Frontend
+  participant API as Django API
+  participant VS as Qdrant Vector Store
+  participant LLM as LLM Provider
+  participant DB as PostgreSQL
+
+  User->>FE: Submit question
+  FE->>API: POST /api/chat/messages
+  API->>VS: similarity_search(query)
+  VS-->>API: top-k chunks
+  API->>LLM: generate(context + question)
+  LLM-->>API: answer + confidence
+  API->>DB: save message + metrics
+  DB-->>API: saved
+  API-->>FE: response + sources
+  FE-->>User: Render answer
