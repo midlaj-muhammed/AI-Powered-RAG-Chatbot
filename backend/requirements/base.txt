@@ -24,7 +24,7 @@ langchain-groq>=1.0
 langchain-openai>=1.0
 langchain-text-splitters>=0.3
 chromadb>=0.5
-groq>=0.9,<1.0
+groq>=1.2.0,<2.0
 google-genai>=1.0
 
 # Document Processing
