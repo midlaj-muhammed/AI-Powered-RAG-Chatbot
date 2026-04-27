@@ -38,7 +38,7 @@ python-magic>=0.4,<1.0
 # Utilities
 python-decouple>=3.8,<4.0
 structlog>=24.0
-tiktoken>=0.7
+tiktoken>=0.12.0
 hashlib-additional>=1.0; python_version < "3.0"
 
 # API Documentation
